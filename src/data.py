@@ -192,83 +192,6 @@ def get_asset_data(
     return info, hist, options_dates, calls, puts
 
 
-def save_asset_info(base_path: str, info: Dict) -> None:
-    path = f"{base_path}/info.json"
-    with open(path, "w") as json_file:
-        json.dump(info, json_file, indent=4)
-    logger.debug(f"Saved asset info to: {path}")
-
-
-def get_asset_info(base_path: str) -> Dict:
-    path = f"{base_path}/info.json"
-    with open(path, "r") as json_file:
-        info = json.load(json_file)
-    logger.debug(f"Loaded asset info from: {path}")
-    return info
-
-
-def save_asset_hist(base_path: str, hist: pd.DataFrame) -> None:
-    path = f"{base_path}/hist.csv"
-    hist.to_csv(path)
-    logger.debug(f"Saved asset history to: {path}")
-
-
-def get_asset_hist(base_path: str) -> pd.DataFrame:
-    path = f"{base_path}/hist.csv"
-    hist = pd.read_csv(path)
-    logger.debug(f"Loaded asset history from: {path}")
-    return hist
-
-
-def save_asset_options_dates(base_path: str, option_dates: Tuple) -> None:
-    path = f"{base_path}/option_dates.json"
-    with open(path, "w") as json_file:
-        json.dump(option_dates, json_file, indent=4)
-    logger.debug(f"Saved asset option dates to: {path}")
-
-
-def get_asset_options_dates(base_path: str) -> Tuple:
-    path = f"{base_path}/option_dates.json"
-    with open(path, "r") as json_file:
-        option_dates = json.load(json_file)
-    logger.debug(f"Loaded asset option dates from: {path}")
-    return option_dates
-
-
-def save_asset_calls(base_path: str, calls: Dict[str, pd.DataFrame]) -> None:
-    for date, call in calls.items():
-        path = f"{base_path}/calls_{date}.csv"
-        call.to_csv(path)
-        logger.debug(f"Saved asset calls of date {date} to: {path}")
-
-
-def get_asset_calls(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
-    calls = {}
-    for date in dates:
-        path = f"{base_path}/calls_{date}.csv"
-        call = pd.read_csv(path)
-        calls[date] = call
-        logger.debug(f"Loaded asset calls of date {date} from: {path}")
-    return calls
-
-
-def save_asset_puts(base_path: str, puts: Dict[str, pd.DataFrame]) -> None:
-    for date, put in puts.items():
-        path = f"{base_path}/puts_{date}.csv"
-        put.to_csv(path)
-        logger.debug(f"Saved asset puts of date {date} to: {path}")
-
-
-def get_asset_puts(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
-    puts = {}
-    for date in dates:
-        path = f"{base_path}/puts_{date}.csv"
-        put = pd.read_csv(path)
-        puts[date] = put
-        logger.debug(f"Loaded asset puts of date {date} from: {path}")
-    return puts
-
-
 def get_and_save_asset_data(
     base_data_path: str,
     asset_code: str,
@@ -301,18 +224,18 @@ def get_and_save_asset_data(
         asset_code, start_date, end_date, interval, period
     )
 
-    base_path = data_path(
+    base_path = _data_path(
         base_data_path, asset_code, start_date, end_date, interval, period
     )
 
     if not os.path.exists(base_path):
         os.makedirs(base_path)
 
-    save_asset_info(base_path, info)
-    save_asset_hist(base_path, hist)
-    save_asset_options_dates(base_path, option_dates)
-    save_asset_calls(base_path, calls)
-    save_asset_puts(base_path, puts)
+    _save_asset_info(base_path, info)
+    _save_asset_hist(base_path, hist)
+    _save_asset_options_dates(base_path, option_dates)
+    _save_asset_calls(base_path, calls)
+    _save_asset_puts(base_path, puts)
 
     logger.info(f"Saved data to: {base_path}")
 
@@ -348,18 +271,18 @@ def save_asset_data(
         asset_code, start_date, end_date, interval, period
     )
 
-    base_path = data_path(
+    base_path = _data_path(
         base_data_path, asset_code, start_date, end_date, interval, period
     )
 
     if not os.path.exists(base_path):
         os.makedirs(base_path)
 
-    save_asset_info(base_path, info)
-    save_asset_hist(base_path, hist)
-    save_asset_options_dates(base_path, option_dates)
-    save_asset_calls(base_path, calls)
-    save_asset_puts(base_path, puts)
+    _save_asset_info(base_path, info)
+    _save_asset_hist(base_path, hist)
+    _save_asset_options_dates(base_path, option_dates)
+    _save_asset_calls(base_path, calls)
+    _save_asset_puts(base_path, puts)
 
     logger.info(f"Saved data to: {base_path}")
 
@@ -392,7 +315,7 @@ def load_data_from_local(
         Tuple[ Dict, pd.DataFrame, Tuple, Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]: \
         asset info, asset history, options dates, calls, puts
     """
-    base_path = data_path(
+    base_path = _data_path(
         base_data_path, asset_code, start_date, end_date, interval, period
     )
 
@@ -401,18 +324,95 @@ def load_data_from_local(
 
     logger.info(f"Loading data from: {base_path}")
 
-    info = get_asset_info(base_path)
-    hist = get_asset_hist(base_path)
-    option_dates = get_asset_options_dates(base_path)
-    calls = get_asset_calls(base_path, option_dates)
-    puts = get_asset_puts(base_path, option_dates)
+    info = _get_asset_info(base_path)
+    hist = _get_asset_hist(base_path)
+    option_dates = _get_asset_options_dates(base_path)
+    calls = _get_asset_calls(base_path, option_dates)
+    puts = _get_asset_puts(base_path, option_dates)
 
     logger.info(f"Successfully loaded data from: {base_path}")
 
     return info, hist, option_dates, calls, puts
 
 
-def data_path(
+def _save_asset_info(base_path: str, info: Dict) -> None:
+    path = f"{base_path}/info.json"
+    with open(path, "w") as json_file:
+        json.dump(info, json_file, indent=4)
+    logger.debug(f"Saved asset info to: {path}")
+
+
+def _get_asset_info(base_path: str) -> Dict:
+    path = f"{base_path}/info.json"
+    with open(path, "r") as json_file:
+        info = json.load(json_file)
+    logger.debug(f"Loaded asset info from: {path}")
+    return info
+
+
+def _save_asset_hist(base_path: str, hist: pd.DataFrame) -> None:
+    path = f"{base_path}/hist.csv"
+    hist.to_csv(path)
+    logger.debug(f"Saved asset history to: {path}")
+
+
+def _get_asset_hist(base_path: str) -> pd.DataFrame:
+    path = f"{base_path}/hist.csv"
+    hist = pd.read_csv(path)
+    logger.debug(f"Loaded asset history from: {path}")
+    return hist
+
+
+def _save_asset_options_dates(base_path: str, option_dates: Tuple) -> None:
+    path = f"{base_path}/option_dates.json"
+    with open(path, "w") as json_file:
+        json.dump(option_dates, json_file, indent=4)
+    logger.debug(f"Saved asset option dates to: {path}")
+
+
+def _get_asset_options_dates(base_path: str) -> Tuple:
+    path = f"{base_path}/option_dates.json"
+    with open(path, "r") as json_file:
+        option_dates = json.load(json_file)
+    logger.debug(f"Loaded asset option dates from: {path}")
+    return option_dates
+
+
+def _save_asset_calls(base_path: str, calls: Dict[str, pd.DataFrame]) -> None:
+    for date, call in calls.items():
+        path = f"{base_path}/calls_{date}.csv"
+        call.to_csv(path)
+        logger.debug(f"Saved asset calls of date {date} to: {path}")
+
+
+def _get_asset_calls(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
+    calls = {}
+    for date in dates:
+        path = f"{base_path}/calls_{date}.csv"
+        call = pd.read_csv(path)
+        calls[date] = call
+        logger.debug(f"Loaded asset calls of date {date} from: {path}")
+    return calls
+
+
+def _save_asset_puts(base_path: str, puts: Dict[str, pd.DataFrame]) -> None:
+    for date, put in puts.items():
+        path = f"{base_path}/puts_{date}.csv"
+        put.to_csv(path)
+        logger.debug(f"Saved asset puts of date {date} to: {path}")
+
+
+def _get_asset_puts(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
+    puts = {}
+    for date in dates:
+        path = f"{base_path}/puts_{date}.csv"
+        put = pd.read_csv(path)
+        puts[date] = put
+        logger.debug(f"Loaded asset puts of date {date} from: {path}")
+    return puts
+
+
+def _data_path(
     base_data_path: str,
     asset_code: str,
     start_date: Optional[str] = None,
