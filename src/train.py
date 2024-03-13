@@ -1,7 +1,7 @@
 import importlib
 import logging
 import time
-import yaml
+import argparse
 import sys
 
 from utils.utils import *
@@ -11,6 +11,22 @@ logging.basicConfig(
     datefmt="%m/%d/%Y %H:%M:%S",
     level=logging.INFO,
 )
+
+
+def parse_args() -> argparse.Namespace:
+    """parse command line arguments
+
+    Returns:
+        argparse.Namespace: parsed arguments
+    """
+    parser = argparse.ArgumentParser(description="asset data retriever")
+    parser.add_argument(
+        "--verbose",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level",
+    )
 
 
 def read_config():
