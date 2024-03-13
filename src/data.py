@@ -26,9 +26,10 @@ def parse_args() -> argparse.Namespace:
         help="Logging level",
     )
     parser.add_argument(
-        "--asset_code",
+        "--asset_codes",
+        nargs="+",
         type=str,
-        help="Asset code to fetch data for. E.g. AAPL, TSLA, MSFT, etc.",
+        help="A list of asset code to fetch data for. E.g. AAPL, TSLA, MSFT, etc.",
     )
     parser.add_argument(
         "--start_date",
@@ -447,23 +448,15 @@ def main() -> None:
     set_up_logging(args.verbose)
     logger.info(args)
 
-    _ = get_and_save_asset_data(
-        args.base_data_path,
-        args.asset_code,
-        args.start_date,
-        args.end_date,
-        args.interval,
-        args.period,
-    )
-
-    _ = load_data_from_local(
-        args.base_data_path,
-        args.asset_code,
-        args.start_date,
-        args.end_date,
-        args.interval,
-        args.period,
-    )
+    for asset_code in args.asset_codes:
+        _ = save_asset_data(
+            args.base_data_path,
+            asset_code,
+            args.start_date,
+            args.end_date,
+            args.interval,
+            args.period,
+        )
 
 
 if __name__ == "__main__":
