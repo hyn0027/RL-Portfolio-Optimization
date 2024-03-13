@@ -93,6 +93,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def get_asset_data(
+    base_data_path: str,
     asset_code: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -102,6 +103,7 @@ def get_asset_data(
     """get asset data from Yahoo Finance
 
     Args:
+        base_data_path (str): base data path to save the asset data
         asset_code (str): asset code to fetch data for. E.g. AAPL, TSLA, MSFT, etc.
         start_date (Optional[str], optional): start date . Defaults to None.
         end_date (Optional[str], optional): end date. Defaults to None.
@@ -122,6 +124,16 @@ def get_asset_data(
         Tuple[str, pd.DataFrame, tuple, Dict, Dict]: \
         asset info, asset history, options dates, calls, puts
     """
+
+    base_path = _data_path(
+        base_data_path, asset_code, start_date, end_date, interval, period
+    )
+
+    if os.path.exists(base_path):
+        return load_data_from_local(
+            base_data_path, asset_code, start_date, end_date, interval, period
+        )
+
     if (start_date is not None and end_date is None) or (
         start_date is None and end_date is not None
     ):
@@ -219,16 +231,21 @@ def get_and_save_asset_data(
         Tuple[Dict, pd.DataFrame, Tuple, Dict, Dict, str]: \
         asset info, asset history, options dates, calls, puts, base path
     """
-    info, hist, option_dates, calls, puts = get_asset_data(
-        asset_code, start_date, end_date, interval, period
-    )
-
     base_path = _data_path(
         base_data_path, asset_code, start_date, end_date, interval, period
     )
 
-    if not os.path.exists(base_path):
-        os.makedirs(base_path)
+    if os.path.exists(base_path):
+        info, hist, option_dates, calls, puts = load_data_from_local(
+            base_data_path, asset_code, start_date, end_date, interval, period
+        )
+        return info, hist, option_dates, calls, puts, base_path
+
+    info, hist, option_dates, calls, puts = get_asset_data(
+        base_data_path, asset_code, start_date, end_date, interval, period
+    )
+
+    os.makedirs(base_path)
 
     _save_asset_info(base_path, info)
     _save_asset_hist(base_path, hist)
@@ -266,16 +283,18 @@ def save_asset_data(
     Returns:
         str: base path
     """
-    info, hist, option_dates, calls, puts = get_asset_data(
-        asset_code, start_date, end_date, interval, period
-    )
-
     base_path = _data_path(
         base_data_path, asset_code, start_date, end_date, interval, period
     )
 
-    if not os.path.exists(base_path):
-        os.makedirs(base_path)
+    if os.path.exists(base_path):
+        return base_path
+
+    info, hist, option_dates, calls, puts = get_asset_data(
+        base_data_path, asset_code, start_date, end_date, interval, period
+    )
+
+    os.makedirs(base_path)
 
     _save_asset_info(base_path, info)
     _save_asset_hist(base_path, hist)

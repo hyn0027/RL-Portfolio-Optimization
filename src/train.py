@@ -1,9 +1,9 @@
 import argparse
-import sys
-from utils.logging import set_up_logging, get_logger
+from typing import Optional, List, Dict, Any
 
-from utils.utils import *
+from utils.logging import set_up_logging, get_logger
 from agents import registered_agents
+from data import get_and_save_asset_data
 
 logger = get_logger("train")
 
@@ -33,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--asset_codes",
+        required=True,
         nargs="+",
         type=str,
         help="List of asset codes to use",
@@ -105,11 +106,54 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main():
+def load_data(
+    base_data_path: str,
+    asset_codes: List[str],
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    interval: str = "1d",
+    period: Optional[str] = None,
+) -> Dict[str, Dict[str, Any]]:
+    data = {}
+    for asset_code in asset_codes:
+        info, hist, option_dates, calls, puts, base_path = get_and_save_asset_data(
+            base_data_path,
+            asset_code,
+            start_date=start_date,
+            end_date=end_date,
+            interval=interval,
+            period=period,
+        )
+        data[asset_code] = {
+            "info": info,
+            "hist": hist,
+            "option_dates": option_dates,
+            "calls": calls,
+            "puts": puts,
+            "base_path": base_path,
+        }
+
+    return data
+
+
+def main() -> None:
     set_up_logging()
 
     args = parse_args()
     logger.info(args)
+    data = load_data(
+        args.base_data_path,
+        args.asset_codes,
+        args.start_date,
+        args.end_date,
+        args.interval,
+        args.period,
+    )
+
+    agent = registered_agents[args.model](args)
+    agent.set_data(data)
+    agent.train()
+
     exit(-1)
 
     # read config
