@@ -4,7 +4,7 @@ import time
 import yaml
 import sys
 
-from utils import *
+from utils.utils import *
 
 logging.basicConfig(
     format="[%(asctime)s.%(msecs)03d %(filename)s:%(lineno)3s] %(message)s",

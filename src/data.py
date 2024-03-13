@@ -1,17 +1,13 @@
 import os
 import json
 import argparse
-import logging
+from utils.logging import set_up_logging, get_logger
 from typing import Optional, Dict, Tuple
 
 import yfinance as yf
 import pandas as pd
 
-logging.basicConfig(
-    format="[%(asctime)s.%(msecs)03d %(filename)s:%(lineno)3s] %(message)s",
-    datefmt="%m/%d/%Y %H:%M:%S",
-    level=logging.INFO,
-)
+logger = get_logger("data")
 
 
 def parse_args() -> argparse.Namespace:
@@ -23,9 +19,15 @@ def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description="asset data retriever")
     parser.add_argument(
+        "--verbose",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level",
+    )
+    parser.add_argument(
         "--asset_code",
         type=str,
-        default="AAPL",
         help="Asset code to fetch data for. E.g. AAPL, TSLA, MSFT, etc.",
     )
     parser.add_argument(
@@ -166,7 +168,7 @@ def get_asset_data(
             1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max"
         )
 
-    logging.info(
+    logger.info(
         f"Fetching data for asset_code: {asset_code}, start_date: {start_date}, end_date: {end_date}, interval: {interval}, period: {period}"
     )
 
@@ -185,7 +187,7 @@ def get_asset_data(
     calls = {date: asset.option_chain(date).calls for date in options_dates}
     puts = {date: asset.option_chain(date).puts for date in options_dates}
 
-    logging.info(f"Successfully fetched data for asset_code: {asset_code}")
+    logger.info(f"Successfully fetched data for asset_code: {asset_code}")
 
     return info, hist, options_dates, calls, puts
 
@@ -194,27 +196,27 @@ def save_asset_info(base_path: str, info: Dict) -> None:
     path = f"{base_path}/info.json"
     with open(path, "w") as json_file:
         json.dump(info, json_file, indent=4)
-    logging.debug(f"Saved asset info to: {path}")
+    logger.debug(f"Saved asset info to: {path}")
 
 
 def get_asset_info(base_path: str) -> Dict:
     path = f"{base_path}/info.json"
     with open(path, "r") as json_file:
         info = json.load(json_file)
-    logging.debug(f"Loaded asset info from: {path}")
+    logger.debug(f"Loaded asset info from: {path}")
     return info
 
 
 def save_asset_hist(base_path: str, hist: pd.DataFrame) -> None:
     path = f"{base_path}/hist.csv"
     hist.to_csv(path)
-    logging.debug(f"Saved asset history to: {path}")
+    logger.debug(f"Saved asset history to: {path}")
 
 
 def get_asset_hist(base_path: str) -> pd.DataFrame:
     path = f"{base_path}/hist.csv"
     hist = pd.read_csv(path)
-    logging.debug(f"Loaded asset history from: {path}")
+    logger.debug(f"Loaded asset history from: {path}")
     return hist
 
 
@@ -222,14 +224,14 @@ def save_asset_options_dates(base_path: str, option_dates: Tuple) -> None:
     path = f"{base_path}/option_dates.json"
     with open(path, "w") as json_file:
         json.dump(option_dates, json_file, indent=4)
-    logging.debug(f"Saved asset option dates to: {path}")
+    logger.debug(f"Saved asset option dates to: {path}")
 
 
 def get_asset_options_dates(base_path: str) -> Tuple:
     path = f"{base_path}/option_dates.json"
     with open(path, "r") as json_file:
         option_dates = json.load(json_file)
-    logging.debug(f"Loaded asset option dates from: {path}")
+    logger.debug(f"Loaded asset option dates from: {path}")
     return option_dates
 
 
@@ -237,7 +239,7 @@ def save_asset_calls(base_path: str, calls: Dict[str, pd.DataFrame]) -> None:
     for date, call in calls.items():
         path = f"{base_path}/calls_{date}.csv"
         call.to_csv(path)
-        logging.debug(f"Saved asset calls of date {date} to: {path}")
+        logger.debug(f"Saved asset calls of date {date} to: {path}")
 
 
 def get_asset_calls(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
@@ -246,7 +248,7 @@ def get_asset_calls(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
         path = f"{base_path}/calls_{date}.csv"
         call = pd.read_csv(path)
         calls[date] = call
-        logging.debug(f"Loaded asset calls of date {date} from: {path}")
+        logger.debug(f"Loaded asset calls of date {date} from: {path}")
     return calls
 
 
@@ -254,7 +256,7 @@ def save_asset_puts(base_path: str, puts: Dict[str, pd.DataFrame]) -> None:
     for date, put in puts.items():
         path = f"{base_path}/puts_{date}.csv"
         put.to_csv(path)
-        logging.debug(f"Saved asset puts of date {date} to: {path}")
+        logger.debug(f"Saved asset puts of date {date} to: {path}")
 
 
 def get_asset_puts(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
@@ -263,7 +265,7 @@ def get_asset_puts(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
         path = f"{base_path}/puts_{date}.csv"
         put = pd.read_csv(path)
         puts[date] = put
-        logging.debug(f"Loaded asset puts of date {date} from: {path}")
+        logger.debug(f"Loaded asset puts of date {date} from: {path}")
     return puts
 
 
@@ -312,7 +314,7 @@ def get_and_save_asset_data(
     save_asset_calls(base_path, calls)
     save_asset_puts(base_path, puts)
 
-    logging.info(f"Saved data to: {base_path}")
+    logger.info(f"Saved data to: {base_path}")
 
     return info, hist, option_dates, calls, puts, base_path
 
@@ -359,7 +361,7 @@ def save_asset_data(
     save_asset_calls(base_path, calls)
     save_asset_puts(base_path, puts)
 
-    logging.info(f"Saved data to: {base_path}")
+    logger.info(f"Saved data to: {base_path}")
 
     return base_path
 
@@ -397,7 +399,7 @@ def load_data_from_local(
     if not os.path.exists(base_path):
         raise ValueError(f"Data not found at {base_path}.")
 
-    logging.info(f"Loading data from: {base_path}")
+    logger.info(f"Loading data from: {base_path}")
 
     info = get_asset_info(base_path)
     hist = get_asset_hist(base_path)
@@ -405,7 +407,7 @@ def load_data_from_local(
     calls = get_asset_calls(base_path, option_dates)
     puts = get_asset_puts(base_path, option_dates)
 
-    logging.info(f"Successfully loaded data from: {base_path}")
+    logger.info(f"Successfully loaded data from: {base_path}")
 
     return info, hist, option_dates, calls, puts
 
@@ -443,7 +445,9 @@ def data_path(
 
 def main() -> None:
     args = parse_args()
-    logging.info(args)
+
+    set_up_logging(args.verbose)
+    logger.info(args)
 
     _ = get_and_save_asset_data(
         args.base_data_path,
