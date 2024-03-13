@@ -3,6 +3,27 @@ import pandas as pd
 import os
 from empyrical import sharpe_ratio
 from matplotlib import pyplot as plt
+import logging
+import yaml
+import sys
+
+
+logging.basicConfig(
+    format="[%(asctime)s.%(msecs)03d %(filename)s:%(lineno)3s] %(message)s",
+    datefmt="%m/%d/%Y %H:%M:%S",
+    level=logging.INFO,
+)
+
+
+def read_config():
+    with open("config.yaml", "r") as stream:
+        try:
+            config = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            logging.error(exc)
+            sys.exit(0)
+    
+    return config
 
 
 def sigmoid(x):

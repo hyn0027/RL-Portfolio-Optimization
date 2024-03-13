@@ -1,17 +1,18 @@
-model_list: 
-    - DDPG
-    - DDQN
-    - DQN
+base_data_path: ../data
 
-model: DDPG
+train:
+  model_list: 
+      - DDPG
+      - DDQN
+      - DQN
 
-stock_list:
-  - {stock_code: AAPL, interval: 1d, period: 5d}
+  model: DDPG
 
-window_size: 10
+  stock_list:
+    - {stock_code: AAPL, interval: 1d, period: 5d}
 
-num_episode: 10
+  window_size: 10
 
-initial_balance: 20000
+  num_episode: 10
 
-
+  initial_balance: 20000
