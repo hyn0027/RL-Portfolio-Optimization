@@ -1,0 +1,17 @@
+model_list: 
+    - DDPG
+    - DDQN
+    - DQN
+
+model: DDPG
+
+stock_list:
+  - {stock_code: AAPL, interval: 1d, period: 5d}
+
+window_size: 10
+
+num_episode: 10
+
+initial_balance: 20000
+
+
