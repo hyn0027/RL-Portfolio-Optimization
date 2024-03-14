@@ -114,6 +114,8 @@ def load_data(
     interval: str = "1d",
     period: Optional[str] = None,
 ) -> Dict[str, Dict[str, Any]]:
+    logger.info(f"Loading data for asset codes: {asset_codes}")
+
     data = {}
     for asset_code in asset_codes:
         info, hist, option_dates, calls, puts, base_path = get_and_save_asset_data(
@@ -132,6 +134,8 @@ def load_data(
             "puts": puts,
             "base_path": base_path,
         }
+
+    logger.info("All data loaded")
 
     return data
 
