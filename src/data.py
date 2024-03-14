@@ -2,7 +2,7 @@ import os
 import json
 import argparse
 from utils.logging import set_up_logging, get_logger
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List, Any
 
 import yfinance as yf
 import pandas as pd
@@ -92,6 +92,57 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def load_multiple_data_from_local(
+    base_data_path: str,
+    asset_codes: List[str],
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    interval: str = "1d",
+    period: Optional[str] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """load data for the given asset codes
+
+    Args:
+        base_data_path (str): the base data path to save the asset data
+        asset_codes (List[str]): the list of asset codes to use
+        start_date (Optional[str], optional): start date. Defaults to None.
+        end_date (Optional[str], optional): end date. Defaults to None.
+        interval (str, optional): data interval, select from \
+            ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
+            Defaults to "1d".
+        period (Optional[str], optional): fetch date period, select from \
+            ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
+            Defaults to None.
+
+    Returns:
+        Dict[str, Dict[str, Any]]: the loaded data
+    """
+    logger.info(f"Loading data for asset codes: {asset_codes}")
+
+    data = {}
+    for asset_code in asset_codes:
+        info, hist, option_dates, calls, puts, base_path = get_and_save_asset_data(
+            base_data_path,
+            asset_code,
+            start_date=start_date,
+            end_date=end_date,
+            interval=interval,
+            period=period,
+        )
+        data[asset_code] = {
+            "info": info,
+            "hist": hist,
+            "option_dates": option_dates,
+            "calls": calls,
+            "puts": puts,
+            "base_path": base_path,
+        }
+
+    logger.info("All data loaded")
+
+    return data
+
+
 def get_asset_data(
     base_data_path: str,
     asset_code: str,
@@ -105,14 +156,14 @@ def get_asset_data(
     Args:
         base_data_path (str): base data path to save the asset data
         asset_code (str): asset code to fetch data for. E.g. AAPL, TSLA, MSFT, etc.
-        start_date (Optional[str], optional): start date . Defaults to None.
+        start_date (Optional[str], optional): start date. Defaults to None.
         end_date (Optional[str], optional): end date. Defaults to None.
         interval (str, optional): data interval, select from \
-        ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
-        Defaults to "1d".
+            ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
+            Defaults to "1d".
         period (Optional[str], optional): fetch date period, select from \
-        ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
-        Defaults to None.
+            ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
+            Defaults to None.
 
     Raises:
         ValueError: start_date and end_date must be used together
@@ -130,7 +181,7 @@ def get_asset_data(
     )
 
     if os.path.exists(base_path):
-        return load_data_from_local(
+        return load_single_data_from_local(
             base_data_path, asset_code, start_date, end_date, interval, period
         )
 
@@ -221,11 +272,11 @@ def get_and_save_asset_data(
         start_date (Optional[str], optional): start date . Defaults to None.
         end_date (Optional[str], optional): end date. Defaults to None.
         interval (str, optional): data interval, select from \
-        ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
-        Defaults to "1d".
+            ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
+            Defaults to "1d".
         period (Optional[str], optional): fetch date period, select from \
-        ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
-        Defaults to None.
+            ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
+            Defaults to None.
 
     Returns:
         Tuple[Dict, pd.DataFrame, Tuple, Dict, Dict, str]: \
@@ -236,7 +287,7 @@ def get_and_save_asset_data(
     )
 
     if os.path.exists(base_path):
-        info, hist, option_dates, calls, puts = load_data_from_local(
+        info, hist, option_dates, calls, puts = load_single_data_from_local(
             base_data_path, asset_code, start_date, end_date, interval, period
         )
         return info, hist, option_dates, calls, puts, base_path
@@ -274,11 +325,11 @@ def save_asset_data(
         start_date (Optional[str], optional): start date . Defaults to None.
         end_date (Optional[str], optional): end date. Defaults to None.
         interval (str, optional): data interval, select from \
-        ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
-        Defaults to "1d".
+            ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
+            Defaults to "1d".
         period (Optional[str], optional): fetch date period, select from \
-        ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
-        Defaults to None.
+            ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
+            Defaults to None.
 
     Returns:
         str: base path
@@ -307,7 +358,7 @@ def save_asset_data(
     return base_path
 
 
-def load_data_from_local(
+def load_single_data_from_local(
     base_data_path: str,
     asset_code: str,
     start_date: Optional[str] = None,
@@ -323,11 +374,11 @@ def load_data_from_local(
         start_date (Optional[str], optional): start date . Defaults to None.
         end_date (Optional[str], optional): end date. Defaults to None.
         interval (str, optional): data interval, select from \
-        ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
-        Defaults to "1d".
+            ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
+            Defaults to "1d".
         period (Optional[str], optional): fetch date period, select from \
-        ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
-        Defaults to None.
+            ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
+            Defaults to None.
 
     Returns:
         Tuple[ Dict, pd.DataFrame, Tuple, Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]: \
@@ -446,11 +497,11 @@ def _data_path(
         start_date (Optional[str], optional): start date . Defaults to None.
         end_date (Optional[str], optional): end date. Defaults to None.
         interval (str, optional): data interval, select from \
-        ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
-        Defaults to "1d".
+            ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]. \
+            Defaults to "1d".
         period (Optional[str], optional): fetch date period, select from \
-        ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
-        Defaults to None.
+            ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
+            Defaults to None.
 
     Returns:
         str: data base path to save the asset data
