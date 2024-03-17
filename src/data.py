@@ -150,7 +150,7 @@ def get_asset_data(
     end_date: Optional[str] = None,
     interval: str = "1d",
     period: Optional[str] = None,
-) -> Tuple[str, pd.DataFrame, Tuple, Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
+) -> Tuple[Dict, pd.DataFrame, Tuple, Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
     """get asset data from Yahoo Finance
 
     Args:
@@ -172,7 +172,7 @@ def get_asset_data(
         ValueError: no data found for asset_code
 
     Returns:
-        Tuple[str, pd.DataFrame, tuple, Dict, Dict]: \
+        Tuple[Dict, pd.DataFrame, tuple, Dict, Dict]: \
         asset info, asset history, options dates, calls, puts
     """
 

@@ -1,5 +1,4 @@
 import argparse
-from typing import Optional, List, Dict, Any
 
 from utils.logging import set_up_logging, get_logger
 from agents import registered_agents
@@ -111,6 +110,14 @@ def main() -> None:
 
     args = parse_args()
     logger.info(args)
+
+    logger.info(f"Agent:            {args.model}")
+    logger.info(f"Trading Assets:   {args.asset_codes}")
+    logger.info(f"Start Date:       {args.start_date}")
+    logger.info(f"End Date:         {args.end_date}")
+    logger.info(f"Interval:         {args.interval}")
+    logger.info(f"Period:           {args.period}")
+
     data = load_multiple_data_from_local(
         args.base_data_path,
         args.asset_codes,
@@ -134,13 +141,6 @@ def main() -> None:
     # # select learning model
     # model = importlib.import_module(f"agents.{model_name}")
     # agent = model.Agent(state_dim=window_size + 3, balance=initial_balance)
-
-    # logger.info(f"Trading Object:           {stock_name}")
-    # logger.info(f"Trading Period:           {trading_period} days")
-    # logger.info(f"Window Size:              {window_size} days")
-    # logger.info(f"Training Episode:         {num_episode}")
-    # logger.info(f"Model Name:               {model_name}")
-    # logger.info("Initial Portfolio Value: ${:,}".format(initial_balance))
 
     # train(model_name, agent, window_size, num_episode, stock_prices, trading_period)
 
