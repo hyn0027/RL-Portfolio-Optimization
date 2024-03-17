@@ -2,7 +2,7 @@ import argparse
 
 from utils.logging import set_up_logging, get_logger
 from agents import registered_agents
-from data import load_multiple_data_from_local
+from data import load_data_object_from_local
 
 logger = get_logger("train")
 
@@ -118,7 +118,7 @@ def main() -> None:
     logger.info(f"Interval:         {args.interval}")
     logger.info(f"Period:           {args.period}")
 
-    data = load_multiple_data_from_local(
+    data = load_data_object_from_local(
         args.base_data_path,
         args.asset_codes,
         args.start_date,
@@ -127,8 +127,7 @@ def main() -> None:
         args.period,
     )
 
-    agent = registered_agents[args.model](args)
-    agent.set_data(data)
+    agent = registered_agents[args.model](args, data)
     agent.train()
 
     exit(-1)

@@ -41,9 +41,7 @@ class Agent(BaseAgent):
         )
         self.is_eval = is_eval
         self.model = (
-            load_model("saved_models/{}.h5".format(model_name))
-            if is_eval
-            else self.model()
+            load_model(f"saved_models/{model_name}.h5") if is_eval else self.model()
         )
 
         self.tensorboard = TensorBoard(log_dir="./logs/DQN_tensorboard", update_freq=90)

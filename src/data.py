@@ -92,7 +92,33 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_multiple_data_from_local(
+class Data:
+    def __init__(self, data: Dict[str, Dict[str, Any]] = {}) -> None:
+        self.data = data
+
+    def add_asset_data(self, asset_code: str, data: Dict[str, Any]) -> None:
+        self.data[asset_code] = data
+
+    def get_asset_data(self, asset_code: str) -> Dict[str, Any]:
+        return self.data[asset_code]
+
+    def get_asset_info(self, asset_code: str) -> Dict[str, Any]:
+        return self.data[asset_code]["info"]
+
+    def get_asset_hist(self, asset_code: str) -> pd.DataFrame:
+        return self.data[asset_code]["hist"]
+
+    def get_asset_option_dates(self, asset_code: str) -> Tuple:
+        return self.data[asset_code]["option_dates"]
+
+    def get_asset_calls(self, asset_code: str, date: str) -> pd.DataFrame:
+        return self.data[asset_code]["calls"][date]
+
+    def get_asset_puts(self, asset_code: str, date: str) -> pd.DataFrame:
+        return self.data[asset_code]["puts"][date]
+
+
+def load_data_object_from_local(
     base_data_path: str,
     asset_codes: List[str],
     start_date: Optional[str] = None,
@@ -140,7 +166,7 @@ def load_multiple_data_from_local(
 
     logger.info("All data loaded")
 
-    return data
+    return Data(data)
 
 
 def get_asset_data(
