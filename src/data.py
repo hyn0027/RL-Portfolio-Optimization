@@ -100,8 +100,25 @@ def parse_args() -> argparse.Namespace:
 class Data:
     def __init__(self, data: Dict[str, Dict[str, Any]] = {}) -> None:
         self.data = data
+        self.uniform_time()
 
-    def index(self) -> List[str]:
+    def uniform_time(self, time_zone: str = "America/New_York") -> None:
+        for asset_code in self.asset_codes():
+            self.data[asset_code]["hist"] = self.data[asset_code]["hist"].tz_convert(
+                time_zone
+            )
+            for option_date in self.get_asset_option_dates(asset_code):
+                self.data[asset_code]["calls"][option_date]["lastTradeDate"] = (
+                    self.data[asset_code]["calls"][option_date][
+                        "lastTradeDate"
+                    ].dt.tz_convert(time_zone)
+                )
+                self.data[asset_code]["puts"][option_date]["lastTradeDate"] = self.data[
+                    asset_code
+                ]["puts"][option_date]["lastTradeDate"].dt.tz_convert(time_zone)
+        logger.info(f"All data timezone changed to {time_zone}.")
+
+    def asset_codes(self) -> List[str]:
         return list(self.data.keys())
 
     def add_asset_data(self, asset_code: str, data: Dict[str, Any]) -> None:
@@ -115,9 +132,6 @@ class Data:
 
     def get_asset_hist(self, asset_code: str) -> pd.DataFrame:
         return self.data[asset_code]["hist"]
-
-    def get_asset_hist_index_type(self, asset_code: str) -> pd._typing.DtypeObj:
-        return self.data[asset_code]["hist"].index.dtype
 
     def get_asset_option_dates(self, asset_code: str) -> Tuple:
         return self.data[asset_code]["option_dates"]
@@ -507,7 +521,7 @@ def _get_asset_calls(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
     calls = {}
     for date in dates:
         path = f"{base_path}/calls_{date}.csv"
-        call = pd.read_csv(path)
+        call = pd.read_csv(path, parse_dates=["lastTradeDate"])
         calls[date] = call
         logger.debug(f"Loaded asset calls of date {date} from: {path}")
     return calls
@@ -524,7 +538,7 @@ def _get_asset_puts(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
     puts = {}
     for date in dates:
         path = f"{base_path}/puts_{date}.csv"
-        put = pd.read_csv(path)
+        put = pd.read_csv(path, parse_dates=["lastTradeDate"])
         puts[date] = put
         logger.debug(f"Loaded asset puts of date {date} from: {path}")
     return puts
