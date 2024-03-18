@@ -101,6 +101,9 @@ class Data:
     def __init__(self, data: Dict[str, Dict[str, Any]] = {}) -> None:
         self.data = data
 
+    def index(self) -> List[str]:
+        return list(self.data.keys())
+
     def add_asset_data(self, asset_code: str, data: Dict[str, Any]) -> None:
         self.data[asset_code] = data
 
@@ -112,6 +115,9 @@ class Data:
 
     def get_asset_hist(self, asset_code: str) -> pd.DataFrame:
         return self.data[asset_code]["hist"]
+
+    def get_asset_hist_index_type(self, asset_code: str) -> pd._typing.DtypeObj:
+        return self.data[asset_code]["hist"].index.dtype
 
     def get_asset_option_dates(self, asset_code: str) -> Tuple:
         return self.data[asset_code]["option_dates"]
@@ -470,7 +476,7 @@ def _save_asset_hist(base_path: str, hist: pd.DataFrame) -> None:
 
 def _get_asset_hist(base_path: str) -> pd.DataFrame:
     path = f"{base_path}/hist.csv"
-    hist = pd.read_csv(path)
+    hist = pd.read_csv(path, index_col=0, parse_dates=True)
     logger.debug(f"Loaded asset history from: {path}")
     return hist
 

@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--env",
         type=str,
-        default="BaseEnv",
+        default="BasicEnv",
         choices=registered_envs.keys(),
         help="Name of the environment to use",
     )
