@@ -89,6 +89,11 @@ def parse_args() -> argparse.Namespace:
         default="../data",
         help="Base data path to save the asset data",
     )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Whether or not to reload data if the data already exists.",
+    )
     return parser.parse_args()
 
 
@@ -118,13 +123,14 @@ class Data:
         return self.data[asset_code]["puts"][date]
 
 
-def load_data_object_from_local(
+def load_data_object(
     base_data_path: str,
     asset_codes: List[str],
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     interval: str = "1d",
     period: Optional[str] = None,
+    reload: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """load data for the given asset codes
 
@@ -139,6 +145,8 @@ def load_data_object_from_local(
         period (Optional[str], optional): fetch date period, select from \
             ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
             Defaults to None.
+        reload (bool, optional): whether or not to reload data. Defaults to False.
+
 
     Returns:
         Dict[str, Dict[str, Any]]: the loaded data
@@ -154,6 +162,7 @@ def load_data_object_from_local(
             end_date=end_date,
             interval=interval,
             period=period,
+            reload=reload,
         )
         data[asset_code] = {
             "info": info,
@@ -176,6 +185,7 @@ def get_asset_data(
     end_date: Optional[str] = None,
     interval: str = "1d",
     period: Optional[str] = None,
+    reload: bool = False,
 ) -> Tuple[Dict, pd.DataFrame, Tuple, Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
     """get asset data from Yahoo Finance
 
@@ -190,6 +200,7 @@ def get_asset_data(
         period (Optional[str], optional): fetch date period, select from \
             ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
             Defaults to None.
+        reload (bool, optional): whether or not to reload data. Defaults to False.
 
     Raises:
         ValueError: start_date and end_date must be used together
@@ -206,7 +217,7 @@ def get_asset_data(
         base_data_path, asset_code, start_date, end_date, interval, period
     )
 
-    if os.path.exists(base_path):
+    if os.path.exists(base_path) and not reload:
         return load_single_data_from_local(
             base_data_path, asset_code, start_date, end_date, interval, period
         )
@@ -287,6 +298,7 @@ def get_and_save_asset_data(
     end_date: Optional[str] = None,
     interval: str = "1d",
     period: Optional[str] = None,
+    reload: bool = False,
 ) -> Tuple[
     Dict, pd.DataFrame, Tuple, Dict[str, pd.DataFrame], Dict[str, pd.DataFrame], str
 ]:
@@ -303,6 +315,7 @@ def get_and_save_asset_data(
         period (Optional[str], optional): fetch date period, select from \
             ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
             Defaults to None.
+        reload (bool, optional): whether or not to reload data. Defaults to False.
 
     Returns:
         Tuple[Dict, pd.DataFrame, Tuple, Dict, Dict, str]: \
@@ -312,17 +325,18 @@ def get_and_save_asset_data(
         base_data_path, asset_code, start_date, end_date, interval, period
     )
 
-    if os.path.exists(base_path):
+    if os.path.exists(base_path) and not reload:
         info, hist, option_dates, calls, puts = load_single_data_from_local(
             base_data_path, asset_code, start_date, end_date, interval, period
         )
         return info, hist, option_dates, calls, puts, base_path
 
     info, hist, option_dates, calls, puts = get_asset_data(
-        base_data_path, asset_code, start_date, end_date, interval, period
+        base_data_path, asset_code, start_date, end_date, interval, period, reload
     )
 
-    os.makedirs(base_path)
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
 
     _save_asset_info(base_path, info)
     _save_asset_hist(base_path, hist)
@@ -342,6 +356,7 @@ def save_asset_data(
     end_date: Optional[str] = None,
     interval: str = "1d",
     period: Optional[str] = None,
+    reload: bool = False,
 ) -> str:
     """save asset data
 
@@ -356,6 +371,7 @@ def save_asset_data(
         period (Optional[str], optional): fetch date period, select from \
             ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]. \
             Defaults to None.
+        reload (bool, optional): whether or not to reload data. Defaults to False.
 
     Returns:
         str: base path
@@ -364,14 +380,15 @@ def save_asset_data(
         base_data_path, asset_code, start_date, end_date, interval, period
     )
 
-    if os.path.exists(base_path):
+    if os.path.exists(base_path) and not reload:
         return base_path
 
     info, hist, option_dates, calls, puts = get_asset_data(
-        base_data_path, asset_code, start_date, end_date, interval, period
+        base_data_path, asset_code, start_date, end_date, interval, period, reload
     )
 
-    os.makedirs(base_path)
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
 
     _save_asset_info(base_path, info)
     _save_asset_hist(base_path, hist)
@@ -552,6 +569,7 @@ def main() -> None:
             args.end_date,
             args.interval,
             args.period,
+            args.reload,
         )
 
 

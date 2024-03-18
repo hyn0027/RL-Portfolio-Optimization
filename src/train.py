@@ -2,7 +2,8 @@ import argparse
 
 from utils.logging import set_up_logging, get_logger
 from agents import registered_agents
-from data import load_data_object_from_local
+from envs import registered_envs
+from data import load_data_object
 
 logger = get_logger("train")
 
@@ -29,6 +30,13 @@ def parse_args() -> argparse.Namespace:
         default="DQN",
         choices=registered_agents.keys(),
         help="Name of the model to use",
+    )
+    parser.add_argument(
+        "--env",
+        type=str,
+        default="BaseEnv",
+        choices=registered_envs.keys(),
+        help="Name of the environment to use",
     )
     parser.add_argument(
         "--asset_codes",
@@ -95,12 +103,21 @@ def parse_args() -> argparse.Namespace:
         default="../data",
         help="Base data path to save the asset data",
     )
+    parser.add_argument(
+        "--reload_data",
+        action="store_true",
+        help="Reload the data from the source",
+    )
 
     args, _ = parser.parse_known_args()
 
     if args.model:
         agent_cls = registered_agents[args.model]
         agent_cls.add_args(parser)
+
+    if args.env:
+        env_cls = registered_envs[args.env]
+        env_cls.add_args(parser)
 
     return parser.parse_args()
 
@@ -118,16 +135,19 @@ def main() -> None:
     logger.info(f"Interval:         {args.interval}")
     logger.info(f"Period:           {args.period}")
 
-    data = load_data_object_from_local(
+    data = load_data_object(
         args.base_data_path,
         args.asset_codes,
         args.start_date,
         args.end_date,
         args.interval,
         args.period,
+        args.reload_data,
     )
 
-    agent = registered_agents[args.model](args, data)
+    env = registered_envs[args.env](args, data)
+
+    agent = registered_agents[args.model](args)
     agent.train()
 
     exit(-1)
