@@ -100,7 +100,6 @@ def parse_args() -> argparse.Namespace:
 class Data:
     def __init__(self, data: Dict[str, Dict[str, Any]] = {}) -> None:
         self.data = data
-        self.uniform_time()
 
     def uniform_time(self, time_zone: str = "America/New_York") -> None:
         for asset_code in self.asset_codes():
@@ -151,7 +150,7 @@ def load_data_object(
     interval: str = "1d",
     period: Optional[str] = None,
     reload: bool = False,
-) -> Dict[str, Dict[str, Any]]:
+) -> Data:
     """load data for the given asset codes
 
     Args:
@@ -294,7 +293,7 @@ def get_asset_data(
     asset = yf.Ticker(asset_code)
     info = asset.info
 
-    if info["trailingPegRatio"] is None:
+    if len(info) < 2:
         raise ValueError(f"No data found for asset_code: {asset_code}")
 
     hist = asset.history(

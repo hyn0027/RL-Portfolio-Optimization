@@ -108,6 +108,96 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Reload the data from the source",
     )
+    parser.add_argument(
+        "--time_zone",
+        type=str,
+        default="America/New_York",
+        choices=[
+            "America/Argentina/Buenos_Aires",  # Argentina/BUE
+            "Australia/Sydney",  # Australia/ASX
+            "Europe/Amsterdam",  # Austria/VIE
+            "Europe/Brussels",  # Belgium/BRU
+            "America/Sao_Paulo",  # Brazil/SAO
+            "America/Toronto",  # Canada/CNQ Canada/TOR Canada/VAN
+            "Asia/Shanghai",  # China/SHH China/SHZ
+            "Europe/Copenhagen",  # Denmark/CPH
+            "Europe/Tallinn",  # Estonia/TAL
+            "Europe/Helsinki",  # Finland/HEL
+            "Europe/Paris",  # France/ENX France/PAR
+            "Europe/Berlin",  # Germany/FRA Germany/BER Germany/DUS Germany/GER Germany/HAM
+            # Germany/HAN Germany/MUN Germany/STU
+            "Europe/Athens",  # Greece/ATN
+            "Asia/Hong_Kong",  # Hong_Kong/HKG
+            "Europe/London",  # Iceland/ICE United_Kingdom/IOB United_Kingdom/LSE
+            "Asia/Kolkata",  # India/BSE India/NSI
+            "Asia/Jakarta",  # Indonesia/JKT
+            "Europe/Dublin",  # Ireland/ISE
+            "Asia/Jerusalem",  # Israel/TLV
+            "Europe/Rome",  # Italy/MIL Italy/TLO
+            "Europe/Riga",  # Latvia/RIS
+            "Europe/Vilnius",  # Lithuania/LIT
+            "Asia/Kuala_Lumpur",  # Malaysia/KLS
+            "America/Mexico_City",  # Mexico/MEX
+            "Europe/Amsterdam",  # Netherlands/AMS
+            "Pacific/Auckland",  # New_Zealand/NZE
+            "Europe/Oslo",  # Norway/OSL
+            "Europe/Lisbon",  # Portugal/LIS
+            "Asia/Qatar",  # Qatar/DOH
+            "Europe/Moscow",  # Russia/MCX
+            "Asia/Singapore",  # Singapore/SES
+            "Asia/Seoul",  # South_Korea/KOE South_Korea/KSC
+            "Europe/Madrid",  # Spain/MCE
+            "Europe/Stockholm",  # Sweden/STO
+            "Europe/Zurich",  # Switzerland/EBS
+            "Asia/Taipei",  # Taiwan/TAI Taiwan/TWO
+            "Asia/Bangkok",  # Thailand/SET
+            "Europe/Istanbul",  # Turkey/IST
+            "America/New_York",  # United_States/ASE United_States/NMS United_States/NCM
+            # United_States/NGM United_States/NYQ United_States/PNK United_States/PCX
+            "America/Caracas",  # Venezuela/CCS
+        ],
+        help="Time zone to use for the data. Default: America/New_York. Time zone reference:"
+        "America/Argentina/Buenos_Aires - Argentina/BUE; "
+        "Australia/Sydney - Australia/ASX; "
+        "Europe/Amsterdam - Austria/VIE; "
+        "Europe/Brussels - Belgium/BRU; "
+        "America/Sao_Paulo - Brazil/SAO; "
+        "America/Toronto - Canada/CNQ Canada/TOR Canada/VAN; "
+        "Asia/Shanghai - China/SHH China/SHZ; "
+        "Europe/Copenhagen - Denmark/CPH; "
+        "Europe/Tallinn - Estonia/TAL; "
+        "Europe/Helsinki - Finland/HEL; "
+        "Europe/Paris - France/ENX France/PAR; "
+        "Europe/Berlin - Germany/FRA Germany/BER Germany/DUS Germany/GER Germany/HAM Germany/HAN Germany/MUN Germany/STU; "
+        "Europe/Athens - Greece/ATN; "
+        "Asia/Hong_Kong - Hong_Kong/HKG; "
+        "Europe/London - Iceland/ICE United_Kingdom/IOB United_Kingdom/LSE; "
+        "Asia/Kolkata - India/BSE India/NSI; "
+        "Asia/Jakarta - Indonesia/JKT; "
+        "Europe/Dublin - Ireland/ISE; "
+        "Asia/Jerusalem - Israel/TLV; "
+        "Europe/Rome - Italy/MIL Italy/TLO; "
+        "Europe/Riga - Latvia/RIS; "
+        "Europe/Vilnius - Lithuania/LIT; "
+        "Asia/Kuala_Lumpur - Malaysia/KLS; "
+        "America/Mexico_City - Mexico/MEX; "
+        "Europe/Amsterdam - Netherlands/AMS; "
+        "Pacific/Auckland - New_Zealand/NZE; "
+        "Europe/Oslo - Norway/OSL; "
+        "Europe/Lisbon - Portugal/LIS; "
+        "Asia/Qatar - Qatar/DOH; "
+        "Europe/Moscow - Russia/MCX; "
+        "Asia/Singapore - Singapore/SES; "
+        "Asia/Seoul - South_Korea/KOE South_Korea/KSC; "
+        "Europe/Madrid - Spain/MCE; "
+        "Europe/Stockholm - Sweden/STO; "
+        "Europe/Zurich - Switzerland/EBS; "
+        "Asia/Taipei - Taiwan/TAI Taiwan/TWO; "
+        "Asia/Bangkok - Thailand/SET; "
+        "Europe/Istanbul - Turkey/IST; "
+        "America/New_York - United_States/ASE United_States/NMS United_States/NCM United_States/NGM United_States/NYQ United_States/PNK United_States/PCX; "
+        "America/Caracas - Venezuela/CCS",
+    )
 
     args, _ = parser.parse_known_args()
 
@@ -144,6 +234,8 @@ def main() -> None:
         args.period,
         args.reload_data,
     )
+
+    data.uniform_time(args.time_zone)
 
     env = registered_envs[args.env](args, data)
 
