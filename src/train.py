@@ -201,7 +201,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--window_size",
         type=int,
-        default=10,
+        default=5,
         help="The number of time steps to look back at",
     )
 

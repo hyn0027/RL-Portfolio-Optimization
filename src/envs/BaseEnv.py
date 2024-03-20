@@ -18,17 +18,22 @@ class BaseEnv:
             parser (argparse.ArgumentParser): the parser to add arguments to
         """
 
-    def __init__(self, args: argparse.Namespace, data: Data) -> None:
+    def __init__(self, args: argparse.Namespace) -> None:
         """initialize the environment
 
         Args:
             args (argparse.Namespace): arguments
             data (Data): data
         """
-        self.data = data
-        self.asset_codes = data.asset_codes
-        self.time_zone = args.time_zone
         self.window_size = args.window_size
+
+    def time_dimension(self) -> int:
+        """the time dimension of the environment
+
+        Returns:
+            int: the time dimension of the environment
+        """
+        raise NotImplementedError("time_dimension not implemented")
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         """the dimension of the state tensors
@@ -56,12 +61,12 @@ class BaseEnv:
 
     def get_state(
         self,
-        time: pd.Timestamp,
+        time_index: int,
     ) -> Dict[str, torch.tensor]:
         """get the state tensors at a given time
 
         Args:
-            time (pd.Timestamp): the time to get the state at
+            time_index (int): the time index to get the state at
 
         Returns:
             Dict[str, torch.tensor]: the state tensors
@@ -71,13 +76,13 @@ class BaseEnv:
     def act(
         self,
         action: torch.tensor,
-        time: pd.Timestamp,
+        time_index: int,
     ) -> Tuple[Dict[str, torch.tensor], float, bool]:
         """update the environment with the given action at the given time
 
         Args:
             action (torch.tensor): the action to take
-            time (pd.Timestamp): the time to take the action at
+            time_index (int): the time index to take the action at
 
 
         Returns:

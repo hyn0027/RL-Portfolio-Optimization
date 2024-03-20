@@ -13,3 +13,6 @@ class DQN(BaseAgent):
 
     def __init__(self, args: argparse.Namespace, env: BaseEnv) -> None:
         super().__init__(args, env)
+
+    def train(self) -> None:
+        self.env.get_state(15)
