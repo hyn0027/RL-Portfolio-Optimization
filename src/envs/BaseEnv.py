@@ -17,7 +17,6 @@ class BaseEnv:
         Args:
             parser (argparse.ArgumentParser): the parser to add arguments to
         """
-        pass
 
     def __init__(self, args: argparse.Namespace, data: Data) -> None:
         """initialize the environment
@@ -27,8 +26,9 @@ class BaseEnv:
             data (Data): data
         """
         self.data = data
-        self.asset_codes = args.asset_codes
+        self.asset_codes = data.asset_codes
         self.time_zone = args.time_zone
+        self.window_size = args.window_size
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         """the dimension of the state tensors

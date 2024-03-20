@@ -97,62 +97,95 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+class SingleData:
+    def __init__(
+        self,
+        asset_code: str,
+        info: Dict,
+        hist: pd.DataFrame,
+        option_dates: Tuple,
+        calls: Dict[str, pd.DataFrame],
+        puts: Dict[str, pd.DataFrame],
+    ) -> None:
+        self.asset_code = asset_code
+        self.info = info
+        self.hist = hist
+        self.option_dates = option_dates
+        self.calls = calls
+        self.puts = puts
+
+
 class Data:
-    def __init__(self, data: Dict[str, Dict[str, Any]] = {}) -> None:
+    def __init__(self, data: Dict[str, SingleData] = {}) -> None:
         self.data = data
-        self.asset_codes = data.keys()
+        self.asset_codes = list(data.keys())
+        self.time_list = self.get_time_list()
 
     def uniform_time(self, time_zone: str = "America/New_York") -> None:
         for asset_code in self.asset_codes:
-            self.data[asset_code]["hist"] = self.data[asset_code]["hist"].tz_convert(
+            self.data[asset_code].hist = self.data[asset_code].hist.tz_convert(
                 time_zone
             )
             for option_date in self.get_asset_option_dates(asset_code):
-                self.data[asset_code]["calls"][option_date]["lastTradeDate"] = (
-                    self.data[asset_code]["calls"][option_date][
-                        "lastTradeDate"
-                    ].dt.tz_convert(time_zone)
+                self.data[asset_code].calls[option_date]["lastTradeDate"] = (
+                    self.data[asset_code]
+                    .calls[option_date]["lastTradeDate"]
+                    .dt.tz_convert(time_zone)
                 )
-                self.data[asset_code]["puts"][option_date]["lastTradeDate"] = self.data[
-                    asset_code
-                ]["puts"][option_date]["lastTradeDate"].dt.tz_convert(time_zone)
+                self.data[asset_code].puts[option_date]["lastTradeDate"] = (
+                    self.data[asset_code]
+                    .puts[option_date]["lastTradeDate"]
+                    .dt.tz_convert(time_zone)
+                )
         logger.info(f"All data timezone changed to {time_zone}.")
 
     def get_time_list(self) -> List[pd.Timestamp]:
         time_set = set()
         for asset_code in self.asset_codes:
-            time_set = time_set.union(set(self.data[asset_code]["hist"].index))
+            time_set = time_set.union(set(self.data[asset_code].hist.index))
         time_list = list(time_set)
         time_list.sort()
         return time_list
 
+    def get_time_index(self, time: pd.Timestamp) -> int:
+        return self.time_list.index(time)
+
     def time_dimension(self) -> int:
-        return len(self.get_time_list())
+        return len(self.time_list)
 
     def asset_dimension(self) -> int:
         return len(self.asset_codes)
 
-    def add_asset_data(self, asset_code: str, data: Dict[str, Any]) -> None:
+    def add_asset_data(self, asset_code: str, data: SingleData) -> None:
         self.data[asset_code] = data
         self.asset_codes.append(asset_code)
+        self.time_list = self.get_time_list()
 
-    def get_asset_data(self, asset_code: str) -> Dict[str, Any]:
+    def get_asset_data(self, asset_code: str) -> SingleData:
         return self.data[asset_code]
 
     def get_asset_info(self, asset_code: str) -> Dict[str, Any]:
-        return self.data[asset_code]["info"]
+        return self.data[asset_code].info
 
     def get_asset_hist(self, asset_code: str) -> pd.DataFrame:
-        return self.data[asset_code]["hist"]
+        return self.data[asset_code].hist
+
+    def get_asset_hist_at_time(
+        self, asset_code: str, time: pd.Timestamp
+    ) -> Optional[pd.Series]:
+        try:
+            return self.data[asset_code].hist.loc[time]
+        except KeyError:
+            return None
 
     def get_asset_option_dates(self, asset_code: str) -> Tuple:
-        return self.data[asset_code]["option_dates"]
+        return self.data[asset_code].option_dates
 
     def get_asset_calls(self, asset_code: str, date: str) -> pd.DataFrame:
-        return self.data[asset_code]["calls"][date]
+        return self.data[asset_code].calls[date]
 
     def get_asset_puts(self, asset_code: str, date: str) -> pd.DataFrame:
-        return self.data[asset_code]["puts"][date]
+        return self.data[asset_code].puts[date]
 
 
 def load_data_object(
@@ -196,14 +229,7 @@ def load_data_object(
             period=period,
             reload=reload,
         )
-        data[asset_code] = {
-            "info": info,
-            "hist": hist,
-            "option_dates": option_dates,
-            "calls": calls,
-            "puts": puts,
-            "base_path": base_path,
-        }
+        data[asset_code] = SingleData(asset_code, info, hist, option_dates, calls, puts)
 
     logger.info("All data loaded")
 

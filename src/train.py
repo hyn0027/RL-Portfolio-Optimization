@@ -198,6 +198,12 @@ def parse_args() -> argparse.Namespace:
         "America/New_York - United_States/ASE United_States/NMS United_States/NCM United_States/NGM United_States/NYQ United_States/PNK United_States/PCX; "
         "America/Caracas - Venezuela/CCS",
     )
+    parser.add_argument(
+        "--window_size",
+        type=int,
+        default=10,
+        help="The number of time steps to look back at",
+    )
 
     args, _ = parser.parse_known_args()
 
