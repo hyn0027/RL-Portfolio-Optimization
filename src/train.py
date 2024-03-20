@@ -215,6 +215,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     set_up_logging()
 
+    # Parse command line arguments
     args = parse_args()
     logger.info(args)
 
@@ -225,6 +226,7 @@ def main() -> None:
     logger.info(f"Interval:         {args.interval}")
     logger.info(f"Period:           {args.period}")
 
+    # Load data
     data = load_data_object(
         args.base_data_path,
         args.asset_codes,
@@ -234,12 +236,12 @@ def main() -> None:
         args.period,
         args.reload_data,
     )
-
     data.uniform_time(args.time_zone)
 
+    # set up environment
     env = registered_envs[args.env](args, data)
 
-    agent = registered_agents[args.model](args)
+    agent = registered_agents[args.model](args, env)
     agent.train()
 
     exit(-1)

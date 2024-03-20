@@ -100,9 +100,10 @@ def parse_args() -> argparse.Namespace:
 class Data:
     def __init__(self, data: Dict[str, Dict[str, Any]] = {}) -> None:
         self.data = data
+        self.asset_codes = data.keys()
 
     def uniform_time(self, time_zone: str = "America/New_York") -> None:
-        for asset_code in self.asset_codes():
+        for asset_code in self.asset_codes:
             self.data[asset_code]["hist"] = self.data[asset_code]["hist"].tz_convert(
                 time_zone
             )
@@ -117,11 +118,23 @@ class Data:
                 ]["puts"][option_date]["lastTradeDate"].dt.tz_convert(time_zone)
         logger.info(f"All data timezone changed to {time_zone}.")
 
-    def asset_codes(self) -> List[str]:
-        return list(self.data.keys())
+    def get_time_list(self) -> List[pd.Timestamp]:
+        time_set = set()
+        for asset_code in self.asset_codes:
+            time_set = time_set.union(set(self.data[asset_code]["hist"].index))
+        time_list = list(time_set)
+        time_list.sort()
+        return time_list
+
+    def time_dimension(self) -> int:
+        return len(self.get_time_list())
+
+    def asset_dimension(self) -> int:
+        return len(self.asset_codes)
 
     def add_asset_data(self, asset_code: str, data: Dict[str, Any]) -> None:
         self.data[asset_code] = data
+        self.asset_codes.append(asset_code)
 
     def get_asset_data(self, asset_code: str) -> Dict[str, Any]:
         return self.data[asset_code]

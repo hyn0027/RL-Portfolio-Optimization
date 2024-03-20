@@ -1,5 +1,4 @@
 import argparse
-from typing import Union
 
 from utils.logging import get_logger
 from data import Data
