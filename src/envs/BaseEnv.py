@@ -51,38 +51,33 @@ class BaseEnv:
         """
         raise NotImplementedError("state_tensor_names not implemented")
 
-    def action_dimension(self) -> int:
+    def action_dimension(self) -> torch.Size:
         """the dimension of the action the agent can take
 
         Returns:
-            int: the dimension of the action the agent can take
+            torch.Size: the dimension of the action the agent can take
         """
         raise NotImplementedError("action_dimension not implemented")
 
     def get_state(
         self,
-        time_index: int,
     ) -> Dict[str, torch.tensor]:
         """get the state tensors at a given time
-
-        Args:
-            time_index (int): the time index to get the state at
 
         Returns:
             Dict[str, torch.tensor]: the state tensors
         """
         raise NotImplementedError("get_state not implemented")
 
-    def act(
-        self,
-        action: torch.tensor,
-        time_index: int,
+    def step(
+        self, action: torch.tensor, update: bool
     ) -> Tuple[Dict[str, torch.tensor], float, bool]:
         """update the environment with the given action at the given time
 
         Args:
             action (torch.tensor): the action to take
             time_index (int): the time index to take the action at
+            update (bool): whether to update the environment
 
 
         Returns:
