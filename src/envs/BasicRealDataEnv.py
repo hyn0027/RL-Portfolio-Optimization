@@ -1,4 +1,6 @@
 import argparse
+from typing import List
+import torch
 
 from data import Data
 from envs.BaseEnv import BaseEnv
@@ -15,5 +17,5 @@ class BasicRealDataEnv(BaseEnv):
         self.asset_codes = data.asset_codes
         self.time_zone = args.time_zone
 
-    def time_dimension(self) -> int:
-        return self.data.time_dimension()
+    def possible_actions(self) -> List[torch.tensor]:
+        raise NotImplementedError("possible_action not implemented")

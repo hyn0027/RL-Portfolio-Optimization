@@ -27,13 +27,21 @@ class BaseEnv:
         """
         self.window_size = args.window_size
 
-    def time_dimension(self) -> int:
-        """the time dimension of the environment
+    def to(self, device: torch.device) -> None:
+        """move the environment to the given device
+
+        Args:
+            device (torch.device): the device to move to
+        """
+        raise NotImplementedError("to not implemented")
+
+    def time_range(self) -> range:
+        """the range of time indices
 
         Returns:
-            int: the time dimension of the environment
+            range: the range of time indices
         """
-        raise NotImplementedError("time_dimension not implemented")
+        raise NotImplementedError("time_range not implemented")
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         """the dimension of the state tensors
@@ -69,9 +77,7 @@ class BaseEnv:
         """
         raise NotImplementedError("get_state not implemented")
 
-    def step(
-        self, action: torch.tensor, update: bool
-    ) -> Tuple[Dict[str, torch.tensor], float, bool]:
+    def act(self, action: torch.tensor) -> Tuple[Dict[str, torch.tensor], float, bool]:
         """update the environment with the given action at the given time
 
         Args:
@@ -88,3 +94,11 @@ class BaseEnv:
     def reset(self) -> None:
         """reset the environment"""
         raise NotImplementedError("reset not implemented")
+
+    def update(self, action: torch.tensor) -> None:
+        """update the environment with the given action
+
+        Args:
+            action (torch.tensor): the action to take
+        """
+        raise NotImplementedError("update not implemented")

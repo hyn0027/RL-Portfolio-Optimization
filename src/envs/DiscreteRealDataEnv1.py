@@ -1,6 +1,7 @@
 import argparse
 from typing import Dict, Optional, Tuple, List
 import copy
+from itertools import product
 
 
 from envs import register_env
@@ -30,7 +31,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             "--trading_size",
             type=float,
             default=1e4,
-            help="the size of each trading",
+            help="the size of each trading in terms of currency",
         )
 
     def __init__(self, args: argparse.Namespace, data: Data) -> None:
@@ -41,14 +42,55 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.portfolio_weight = torch.cat(
             (torch.tensor([1.0]), torch.zeros(len(self.asset_codes)))
         )
-        self.kc_window: List[torch.Tensor] = []
-        self.ko_window: List[torch.Tensor] = []
-        self.kh_window: List[torch.Tensor] = []
-        self.kl_window: List[torch.Tensor] = []
-        self.kv_window: List[torch.Tensor] = []
 
-    def time_dimension(self) -> int:
-        return self.data.time_dimension() - 1
+        # compute all Kx in advance
+        kc_list, ko_list, kh_list, kl_list, kv_list = [], [], [], [], []
+        for time_index in self.time_range():
+            new_kc, new_ko, new_kh, new_kl, new_kv = [], [], [], [], []
+            for asset_code in self.asset_codes:
+                asset_data = self.data.get_asset_hist_at_time(
+                    asset_code, self.data.time_list[time_index]
+                )
+                asset_previous_data = self.data.get_asset_hist_at_time(
+                    asset_code, self.data.time_list[time_index - 1]
+                )
+                new_kc.append(
+                    (asset_data["Close"] - asset_previous_data["Close"])
+                    / asset_previous_data["Close"]
+                )
+                new_ko.append(
+                    (asset_data["Open"] - asset_previous_data["Close"])
+                    / asset_previous_data["Close"]
+                )
+                new_kh.append(
+                    (asset_data["Close"] - asset_data["High"]) / asset_data["High"]
+                )
+                new_kl.append(
+                    (asset_data["Close"] - asset_data["Low"]) / asset_data["Low"]
+                )
+                new_kv.append(
+                    (asset_data["Volume"] - asset_previous_data["Volume"])
+                    / asset_previous_data["Volume"]
+                )
+            kc_list.append(torch.tensor(new_kc))
+            ko_list.append(torch.tensor(new_ko))
+            kh_list.append(torch.tensor(new_kh))
+            kl_list.append(torch.tensor(new_kl))
+            kv_list.append(torch.tensor(new_kv))
+        self.full_kc_matrix = torch.stack(kc_list, dim=1)
+        self.full_ko_matrix = torch.stack(ko_list, dim=1)
+        self.full_kh_matrix = torch.stack(kh_list, dim=1)
+        self.full_kl_matrix = torch.stack(kl_list, dim=1)
+        self.full_kv_matrix = torch.stack(kv_list, dim=1)
+
+        # compute all actions
+        self.all_actions = []
+        action_number = range(-1, 2)  # -1, 0, 1
+        for action in product(action_number, repeat=len(self.asset_codes)):
+            self.all_actions.append(torch.tensor(action))
+
+    def time_range(self) -> range:
+        return range(1, self.data.time_dimension())
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         return {
@@ -77,89 +119,50 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         if self.time_index < self.window_size - 1:
             return None
         return {
-            "Kc_Matrix": self.__get_Kx_Matrix(self.kc_window),
-            "Ko_Matrix": self.__get_Kx_Matrix(self.ko_window),
-            "Kh_Matrix": self.__get_Kx_Matrix(self.kh_window),
-            "Kl_Matrix": self.__get_Kx_Matrix(self.kl_window),
-            "Kv_Matrix": self.__get_Kx_Matrix(self.kv_window),
+            "Kc_Matrix": self.__get_Kx_State(self.kc_matrix),
+            "Ko_Matrix": self.__get_Kx_State(self.ko_matrix),
+            "Kh_Matrix": self.__get_Kx_State(self.kh_matrix),
+            "Kl_Matrix": self.__get_Kx_State(self.kl_matrix),
+            "Kv_Matrix": self.__get_Kx_State(self.kv_matrix),
             "Portfolio_Weight": self.portfolio_weight,
         }
 
-    def __get_Kx_Matrix(self, kx_window: List[torch.Tensor]) -> torch.tensor:
-        return torch.stack(kx_window, dim=1)
+    def __get_Kx_State(
+        self, kx_matrix: torch.tensor, time_index: Optional[int] = None
+    ) -> torch.tensor:
+        if time_index is None:
+            time_index = self.time_index
+        return kx_matrix[:, time_index - self.window_size + 1 : time_index]
 
-    def __update_Kx_window(
-        self, kx_window: List[torch.Tensor], new_kx: torch.Tensor
-    ) -> List[torch.Tensor]:
-        if len(kx_window) == self.window_size:
-            kx_window.pop(0)
-        kx_window.append(new_kx)
-
-    def step(
-        self, action: torch.tensor, update: bool
-    ) -> Tuple[Dict[str, torch.tensor], float, bool]:
+    def act(self, action: torch.tensor) -> Tuple[Dict[str, torch.tensor], float, bool]:
         if action.size() != self.action_dimension():
             raise ValueError("action dimension not match")
+        if action not in self.possible_actions():
+            raise ValueError("action not valid")
 
         # calculate
         # TODO: implement step
         # calculate new portfolio_weight
-        new_kc_window = copy.deepcopy(self.kc_window)
-        new_ko_window = copy.deepcopy(self.ko_window)
-        new_kh_window = copy.deepcopy(self.kh_window)
-        new_kl_window = copy.deepcopy(self.kl_window)
-        new_kv_window = copy.deepcopy(self.kv_window)
+        new_portfolio_weight = copy.deepcopy(self.portfolio_weight)
 
-        new_kc = []
-        new_ko = []
-        new_kh = []
-        new_kl = []
-        new_kv = []
+        new_state = {
+            "Kc_Matrix": self.__get_Kx_State(self.kc_matrix, self.time_index + 1),
+            "Ko_Matrix": self.__get_Kx_State(self.ko_matrix, self.time_index + 1),
+            "Kh_Matrix": self.__get_Kx_State(self.kh_matrix, self.time_index + 1),
+            "Kl_Matrix": self.__get_Kx_State(self.kl_matrix, self.time_index + 1),
+            "Kv_Matrix": self.__get_Kx_State(self.kv_matrix, self.time_index + 1),
+            "Portfolio_Weight": new_portfolio_weight,
+        }
 
-        for asset_code in self.asset_codes:
-            asset_data = self.data.get_asset_hist_at_time(
-                asset_code, self.data.time_list[self.time_index]
-            )
-            asset_previous_data = self.data.get_asset_hist_at_time(
-                asset_code, self.data.time_list[self.time_index - 1]
-            )
-            new_kc.append(
-                (asset_data["Close"] - asset_previous_data["Close"])
-                / asset_previous_data["Close"]
-            )
-            new_ko.append(
-                (asset_data["Open"] - asset_previous_data["Close"])
-                / asset_previous_data["Close"]
-            )
-            new_kh.append(
-                (asset_data["Close"] - asset_data["High"]) / asset_data["High"]
-            )
-            new_kl.append((asset_data["Close"] - asset_data["Low"]) / asset_data["Low"])
-            new_kv.append(
-                (asset_data["Volume"] - asset_previous_data["Volume"])
-                / asset_previous_data["Volume"]
-            )
-        new_kc = torch.tensor(new_kc)
-        new_ko = torch.tensor(new_ko)
-        new_kh = torch.tensor(new_kh)
-        new_kl = torch.tensor(new_kl)
-        new_kv = torch.tensor(new_kv)
-
-        new_kc_window = self.__update_Kx_window(new_kc_window, new_kc)
-        new_ko_window = self.__update_Kx_window(new_ko_window, new_ko)
-        new_kh_window = self.__update_Kx_window(new_kh_window, new_kh)
-        new_kl_window = self.__update_Kx_window(new_kl_window, new_kl)
-
-        # update
-        if update:
-            self.time_index += 1
-            self.kc_window = new_kc_window
-            self.ko_window = new_ko_window
-            self.kh_window = new_kh_window
-            self.kl_window = new_kl_window
-            self.kv_window = new_kv_window
-            # update portfolio_weight
-            # update portfolio_value
+    def update(self, action: torch.tensor) -> None:
+        self.time_index += 1
+        pass
 
     def reset(self) -> None:
         raise NotImplementedError("reset not implemented")
+
+    def __action_validity(self, action: torch.tensor) -> bool:
+        pass
+
+    def possible_actions(self) -> List[torch.tensor]:
+        return [action for action in self.all_actions if self.__action_validity(action)]
