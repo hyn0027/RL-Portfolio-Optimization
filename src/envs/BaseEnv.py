@@ -2,8 +2,6 @@ import argparse
 from typing import Dict, Tuple, List, Optional
 from utils.logging import get_logger
 
-from data import Data
-import pandas as pd
 import torch
 
 logger = get_logger("BaseEnv")

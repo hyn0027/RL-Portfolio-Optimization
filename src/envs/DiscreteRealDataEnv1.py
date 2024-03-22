@@ -46,11 +46,11 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         logger.info("initializing DiscreteRealDataEnv1")
 
         self.time_index = 1
-        self.portfolio_value = torch.tensor([args.initial_balance], device=self.device)
+        self.portfolio_value = torch.tensor(args.initial_balance, device=self.device)
         self.trading_size = torch.tensor(args.trading_size, device=self.device)
 
         self.portfolio_weight = torch.zeros(len(self.asset_codes), device=self.device)
-        self.cash_weight = torch.tensor([1.0], device=self.device)
+        self.cash_weight = torch.tensor(1.0, device=self.device)
 
         # compute all Kx in advance
         kc_list, ko_list, kh_list, kl_list, kv_list = [], [], [], [], []
@@ -95,10 +95,8 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.full_kh_matrix = torch.stack(kh_list, dim=1)
         self.full_kl_matrix = torch.stack(kl_list, dim=1)
         self.full_kv_matrix = torch.stack(kv_list, dim=1)
-        self.full_price_matrix = torch.stack(price_list, dim=1)
-        self.price_change_matrix = (
-            self.full_price_matrix[:, 1:] / self.full_price_matrix[:, :-1]
-        )
+        full_price_matrix = torch.stack(price_list, dim=1)
+        self.price_change_matrix = full_price_matrix[:, 1:] / full_price_matrix[:, :-1]
 
         # compute all actions
         self.all_actions = []
@@ -155,12 +153,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             time_index = self.time_index
         return kx_matrix[:, time_index - self.window_size + 1 : time_index]
 
-    def __get_price_tensor(self, time_index: Optional[int] = None) -> torch.Tensor:
-        if time_index is None:
-            time_index = self.time_index
-        return self.full_price_matrix[:, time_index]
-
-    def __get_price_change_tensor(
+    def __get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
     ) -> torch.tensor:
         if time_index is None:
@@ -173,10 +166,13 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         if action not in self.possible_actions():
             raise ValueError("action not valid")
 
-        # calculate
-        # TODO: implement step
-        # calculate new portfolio_weight
-        new_portfolio_weight = copy.deepcopy(self.portfolio_weight)
+        new_portfolio_weight, _, new_portfolio_value = (
+            self.get_new_portfolio_weight_and_value(action)
+        )
+
+        reward = new_portfolio_value - self.portfolio_value
+
+        done = self.time_index == self.data.time_dimension() - 1
 
         new_state = {
             "Kc_Matrix": self.__get_Kx_State(self.kc_matrix, self.time_index + 1),
@@ -187,10 +183,38 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             "Portfolio_Weight": new_portfolio_weight,
         }
 
+        return new_state, reward, done
+
+    def get_new_portfolio_weight_and_value(
+        self, action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # for all action[i], weight[i] += action[i] * trading_size / portfolio_value
+        new_portfolio_weight = (
+            self.portfolio_weight + action * self.trading_size / self.portfolio_value
+        )
+        new_cash_weight = torch.tensor(1.0, device=self.device) - torch.sum(
+            new_portfolio_weight
+        )
+        # changing to the next day
+        # portfolio_value = value * (price change vec * portfolio_weight + cash_weight)
+        price_change_rate = self.__get_price_change_ratio_tensor(self.time_index + 1)
+        new_portfolio_value = self.portfolio_value * (
+            torch.sum(price_change_rate * new_portfolio_weight) + self.cash_weight
+        )
+        # adjust weight based on new value
+        new_portfolio_weight = (
+            price_change_rate
+            * new_portfolio_weight
+            * self.portfolio_value
+            / new_portfolio_value
+        )
+        return new_portfolio_weight, new_cash_weight, new_portfolio_value
+
     def update(self, action: torch.Tensor) -> None:
         self.time_index += 1
-        # TODO
-        pass
+        self.portfolio_weight, self.cash_weight, self.portfolio_value = (
+            self.get_new_portfolio_weight_and_value(action)
+        )
 
     def reset(self) -> None:
         raise NotImplementedError("reset not implemented")
