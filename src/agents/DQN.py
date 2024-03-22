@@ -15,4 +15,4 @@ class DQN(BaseAgent):
         super().__init__(args, env)
 
     def train(self) -> None:
-        self.env.get_state()
+        print(self.env.possible_actions())

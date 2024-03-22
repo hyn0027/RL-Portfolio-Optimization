@@ -1,5 +1,5 @@
 import argparse
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 from utils.logging import get_logger
 
 from data import Data
@@ -18,7 +18,11 @@ class BaseEnv:
             parser (argparse.ArgumentParser): the parser to add arguments to
         """
 
-    def __init__(self, args: argparse.Namespace) -> None:
+    def __init__(
+        self,
+        args: argparse.Namespace,
+        device: Optional[torch.device] = None,
+    ) -> None:
         """initialize the environment
 
         Args:
@@ -26,6 +30,11 @@ class BaseEnv:
             data (Data): data
         """
         self.window_size = args.window_size
+        self.device = (
+            torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            if device is None
+            else device
+        )
 
     def to(self, device: torch.device) -> None:
         """move the environment to the given device
