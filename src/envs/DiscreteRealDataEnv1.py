@@ -108,6 +108,21 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
 
         logger.info("DiscreteRealDataEnv1 initialized")
 
+    def to(self, device: str) -> None:
+        logger.info("Changing device to %s", device)
+        self.device = torch.device(device)
+        self.portfolio_value = self.portfolio_value.to(self.device)
+        self.trading_size = self.trading_size.to(self.device)
+        self.portfolio_weight = self.portfolio_weight.to(self.device)
+        self.cash_weight = self.cash_weight.to(self.device)
+        self.full_kc_matrix = self.full_kc_matrix.to(self.device)
+        self.full_ko_matrix = self.full_ko_matrix.to(self.device)
+        self.full_kh_matrix = self.full_kh_matrix.to(self.device)
+        self.full_kl_matrix = self.full_kl_matrix.to(self.device)
+        self.full_kv_matrix = self.full_kv_matrix.to(self.device)
+        self.price_change_matrix = self.price_change_matrix.to(self.device)
+        self.all_actions = [a.to(self.device) for a in self.all_actions]
+
     def time_range(self) -> range:
         return range(1, self.data.time_dimension() - 1)
 
@@ -229,8 +244,12 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             self.get_new_portfolio_weight_and_value(action)
         )
 
-    def reset(self) -> None:
-        raise NotImplementedError("reset not implemented")
+    def reset(self, args: argparse.Namespace) -> None:
+        logger.info("resetting DiscreteRealDataEnv1")
+        self.time_index = 1
+        self.portfolio_value = torch.tensor(args.initial_balance, device=self.device)
+        self.portfolio_weight = torch.zeros(len(self.asset_codes), device=self.device)
+        self.cash_weight = torch.tensor(1.0, device=self.device)
 
     def __cash_shortage(self, action: torch.Tensor) -> bool:
         return (

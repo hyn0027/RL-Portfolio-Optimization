@@ -19,7 +19,7 @@ class BaseEnv:
     def __init__(
         self,
         args: argparse.Namespace,
-        device: Optional[torch.device] = None,
+        device: Optional[str] = None,
     ) -> None:
         """initialize the environment
 
@@ -31,10 +31,10 @@ class BaseEnv:
         self.device = (
             torch.device("cuda" if torch.cuda.is_available() else "cpu")
             if device is None
-            else device
+            else torch.device("device")
         )
 
-    def to(self, device: torch.device) -> None:
+    def to(self, device: str) -> None:
         """move the environment to the given device
 
         Args:

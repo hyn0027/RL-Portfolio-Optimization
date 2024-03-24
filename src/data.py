@@ -122,6 +122,7 @@ class Data:
         self.time_list = self.get_time_list()
 
     def uniform_time(self, time_zone: str = "America/New_York") -> None:
+        logger.info(f"Changing all data timezone to {time_zone}.")
         for asset_code in self.asset_codes:
             self.data[asset_code].hist = self.data[asset_code].hist.tz_convert(
                 time_zone
