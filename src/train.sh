@@ -9,4 +9,5 @@ python3 train.py \
     --end_date 2023-01-01 \
     --interval 1d \
     --window_size 20 \
-    --device cpu
+    --device cpu \
+    --pretrain_learning_rate 0.002

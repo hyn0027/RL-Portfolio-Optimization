@@ -41,7 +41,7 @@ class MultiDQN(BaseAgent):
         parser.add_argument(
             "--pretrain_learning_rate",
             type=float,
-            default=0.001,
+            default=0.002,
             help="learning rate for pretraining",
         )
 
