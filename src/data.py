@@ -120,6 +120,7 @@ class Data:
         self.data = data
         self.asset_codes = list(data.keys())
         self.time_list = self.get_time_list()
+        logger.info(f"Total {len(self.time_list)} time points found.")
 
     def uniform_time(self, time_zone: str = "America/New_York") -> None:
         logger.info(f"Changing all data timezone to {time_zone}.")
@@ -161,6 +162,7 @@ class Data:
         self.data[asset_code] = data
         self.asset_codes.append(asset_code)
         self.time_list = self.get_time_list()
+        logger.info(f"Total {len(self.time_list)} time points found.")
 
     def get_asset_data(self, asset_code: str) -> SingleData:
         return self.data[asset_code]

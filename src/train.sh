@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python3 train.py \
-    --model MultiDQN \
+    --agent MultiDQN \
     --env DiscreteRealDataEnv1 \
     --network MultiDQN_LSTM \
     --asset_codes AAPL AMZN GOOGL MSFT \
