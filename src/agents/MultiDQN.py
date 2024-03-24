@@ -14,6 +14,12 @@ logger = get_logger("MultiDQN")
 
 @register_agent("MultiDQN")
 class MultiDQN(BaseAgent):
+    """
+    references:
+        https://arxiv.org/abs/1907.03665
+        https://github.com/Jogima-cyber/portfolio-manager
+    """
+
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(MultiDQN, MultiDQN).add_args(parser)

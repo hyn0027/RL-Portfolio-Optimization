@@ -16,7 +16,9 @@ logger = get_logger("DiscreteRealDataEnv1")
 @register_env("DiscreteRealDataEnv1")
 class DiscreteRealDataEnv1(BasicRealDataEnv):
     """
-    reference: https://arxiv.org/abs/1907.03665
+    references:
+        https://arxiv.org/abs/1907.03665
+        https://github.com/Jogima-cyber/portfolio-manager
     The environment for discrete action space, used by DQN in the paper.
     """
 
