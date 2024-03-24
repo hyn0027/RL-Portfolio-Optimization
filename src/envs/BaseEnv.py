@@ -31,7 +31,7 @@ class BaseEnv:
         self.device = (
             torch.device("cuda" if torch.cuda.is_available() else "cpu")
             if device is None
-            else torch.device("device")
+            else torch.device(device)
         )
 
     def to(self, device: str) -> None:

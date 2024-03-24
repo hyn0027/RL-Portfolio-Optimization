@@ -3,6 +3,7 @@ import argparse
 from utils.logging import set_up_logging, get_logger
 from agents import registered_agents
 from envs import registered_envs
+from networks import registered_networks
 from data import load_data_object
 
 logger = get_logger("train")
@@ -25,11 +26,11 @@ def parse_args() -> argparse.Namespace:
         help="Logging level",
     )
     parser.add_argument(
-        "--model",
+        "--agent",
         type=str,
         default="DQN",
         choices=registered_agents.keys(),
-        help="Name of the model to use",
+        help="Name of the agent to use",
     )
     parser.add_argument(
         "--env",
@@ -37,6 +38,14 @@ def parse_args() -> argparse.Namespace:
         default="DiscreteRealDataEnv1",
         choices=registered_envs.keys(),
         help="Name of the environment to use",
+    )
+
+    parser.add_argument(
+        "--network",
+        type=str,
+        default="MultiDQN_LSTM",
+        choices=registered_networks.keys(),
+        help="Name of the network to use",
     )
     parser.add_argument(
         "--asset_codes",
@@ -214,13 +223,17 @@ def parse_args() -> argparse.Namespace:
 
     args, _ = parser.parse_known_args()
 
-    if args.model:
-        agent_cls = registered_agents[args.model]
+    if args.agent:
+        agent_cls = registered_agents[args.agent]
         agent_cls.add_args(parser)
 
     if args.env:
         env_cls = registered_envs[args.env]
         env_cls.add_args(parser)
+
+    if args.network:
+        network_cls = registered_networks[args.network]
+        network_cls.add_args(parser)
 
     return parser.parse_args()
 
@@ -232,7 +245,7 @@ def main() -> None:
     args = parse_args()
     logger.info(args)
 
-    logger.info(f"Agent:            {args.model}")
+    logger.info(f"Agent:            {args.agent}")
     logger.info(f"Trading Assets:   {args.asset_codes}")
     logger.info(f"Start Date:       {args.start_date}")
     logger.info(f"End Date:         {args.end_date}")
@@ -254,7 +267,7 @@ def main() -> None:
     # set up environment
     env = registered_envs[args.env](args, data, args.device)
 
-    agent = registered_agents[args.model](args, env)
+    agent = registered_agents[args.agent](args, env)
     agent.train()
 
     exit(-1)

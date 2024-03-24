@@ -136,13 +136,23 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             kl_list.append(torch.tensor(new_kl, device=self.device))
             kv_list.append(torch.tensor(new_kv, device=self.device))
             price_list.append(torch.tensor(new_price, device=self.device))
-        self.full_kc_matrix = torch.stack(kc_list, dim=1)
-        self.full_ko_matrix = torch.stack(ko_list, dim=1)
-        self.full_kh_matrix = torch.stack(kh_list, dim=1)
-        self.full_kl_matrix = torch.stack(kl_list, dim=1)
-        self.full_kv_matrix = torch.stack(kv_list, dim=1)
-        full_price_matrix = torch.stack(price_list, dim=1)
-        self.price_change_matrix = full_price_matrix[:, 1:] / full_price_matrix[:, :-1]
+        # self.kc_matrix = torch.stack(kc_list, dim=1)
+        # self.ko_matrix = torch.stack(ko_list, dim=1)
+        # self.kh_matrix = torch.stack(kh_list, dim=1)
+        # self.kl_matrix = torch.stack(kl_list, dim=1)
+        # self.kv_matrix = torch.stack(kv_list, dim=1)
+
+        kc_matrix = torch.stack(kc_list, dim=1)
+        ko_matrix = torch.stack(ko_list, dim=1)
+        kh_matrix = torch.stack(kh_list, dim=1)
+        kl_matrix = torch.stack(kl_list, dim=1)
+        kv_matrix = torch.stack(kv_list, dim=1)
+        self.Xt_matrix = torch.stack(
+            [kc_matrix, ko_matrix, kh_matrix, kl_matrix, kv_matrix], dim=0
+        )
+
+        price_matrix = torch.stack(price_list, dim=1)
+        self.price_change_matrix = price_matrix[:, 1:] / price_matrix[:, :-1]
 
         # compute all actions
         self.all_actions = []
@@ -162,11 +172,12 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.trading_size = self.trading_size.to(self.device)
         self.portfolio_weight = self.portfolio_weight.to(self.device)
         self.cash_weight = self.cash_weight.to(self.device)
-        self.full_kc_matrix = self.full_kc_matrix.to(self.device)
-        self.full_ko_matrix = self.full_ko_matrix.to(self.device)
-        self.full_kh_matrix = self.full_kh_matrix.to(self.device)
-        self.full_kl_matrix = self.full_kl_matrix.to(self.device)
-        self.full_kv_matrix = self.full_kv_matrix.to(self.device)
+        # self.kc_matrix = self.kc_matrix.to(self.device)
+        # self.ko_matrix = self.ko_matrix.to(self.device)
+        # self.kh_matrix = self.kh_matrix.to(self.device)
+        # self.kl_matrix = self.kl_matrix.to(self.device)
+        # self.kv_matrix = self.kv_matrix.to(self.device)
+        self.Xt_matrix = self.Xt_matrix.to(self.device)
         self.price_change_matrix = self.price_change_matrix.to(self.device)
         self.all_actions = [a.to(self.device) for a in self.all_actions]
 
@@ -189,21 +200,23 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         return {
-            "Kc_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
-            "Ko_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
-            "Kh_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
-            "Kl_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
-            "Kv_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
-            "Portfolio_Weight": torch.Size([len(self.asset_codes)]),
+            # "Kc_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
+            # "Ko_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
+            # "Kh_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
+            # "Kl_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
+            # "Kv_Matrix": torch.Size([len(self.asset_codes), self.window_size]),
+            "Xt_Matrix": torch.Size([5, len(self.asset_codes), self.window_size]),
+            "Portfolio_Weight": torch.Size([len(self.asset_codes) + 1]),
         }
 
     def state_tensor_names(self):
         return [
-            "Kc_Matrix",
-            "Ko_Matrix",
-            "Kh_Matrix",
-            "Kl_Matrix",
-            "Kv_Matrix",
+            # "Kc_Matrix",
+            # "Ko_Matrix",
+            # "Kh_Matrix",
+            # "Kl_Matrix",
+            # "Kv_Matrix",
+            "Xt_Matrix",
             "Portfolio_Weight",
         ]
 
@@ -214,13 +227,21 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         if self.time_index - self.start_time_index < self.window_size - 1:
             return None
         return {
-            "Kc_Matrix": self.__get_Kx_State(self.kc_matrix),
-            "Ko_Matrix": self.__get_Kx_State(self.ko_matrix),
-            "Kh_Matrix": self.__get_Kx_State(self.kh_matrix),
-            "Kl_Matrix": self.__get_Kx_State(self.kl_matrix),
-            "Kv_Matrix": self.__get_Kx_State(self.kv_matrix),
-            "Portfolio_Weight": self.portfolio_weight,
+            # "Kc_Matrix": self.__get_Kx_State(self.kc_matrix),
+            # "Ko_Matrix": self.__get_Kx_State(self.ko_matrix),
+            # "Kh_Matrix": self.__get_Kx_State(self.kh_matrix),
+            # "Kl_Matrix": self.__get_Kx_State(self.kl_matrix),
+            # "Kv_Matrix": self.__get_Kx_State(self.kv_matrix),
+            "Xt_Matrix": self.__get_Xt_State(),
+            "Portfolio_Weight": self.__concat_weight(
+                self.portfolio_weight, self.cash_weight
+            ),
         }
+
+    def __concat_weight(
+        self, portfolio_weight: torch.Tensor, cash_weight: torch.Tensor
+    ) -> torch.Tensor:
+        return torch.cat((cash_weight.unsqueeze(0), portfolio_weight), dim=0)
 
     def __get_Kx_State(
         self, kx_matrix: torch.Tensor, time_index: Optional[int] = None
@@ -228,6 +249,11 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         if time_index is None:
             time_index = self.time_index
         return kx_matrix[:, time_index - self.window_size + 1 : time_index]
+
+    def __get_Xt_State(self, time_index: Optional[int] = None) -> torch.Tensor:
+        if time_index is None:
+            time_index = self.time_index
+        return self.Xt_matrix[:, :, time_index - self.window_size + 1 : time_index]
 
     def __get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
@@ -244,21 +270,27 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         if self.find_action_index(action) == -1:
             raise ValueError("action not valid")
 
-        new_portfolio_weight, _, new_portfolio_value, static_portfolio_value = (
-            self.get_new_portfolio_weight_and_value(action)
-        )
+        (
+            new_portfolio_weight,
+            new_cash_weight,
+            new_portfolio_value,
+            static_portfolio_value,
+        ) = self.get_new_portfolio_weight_and_value(action)
 
         reward = (new_portfolio_value - static_portfolio_value) / static_portfolio_value
 
         done = self.time_index == self.end_time_index - 1
 
         new_state = {
-            "Kc_Matrix": self.__get_Kx_State(self.kc_matrix, self.time_index + 1),
-            "Ko_Matrix": self.__get_Kx_State(self.ko_matrix, self.time_index + 1),
-            "Kh_Matrix": self.__get_Kx_State(self.kh_matrix, self.time_index + 1),
-            "Kl_Matrix": self.__get_Kx_State(self.kl_matrix, self.time_index + 1),
-            "Kv_Matrix": self.__get_Kx_State(self.kv_matrix, self.time_index + 1),
-            "Portfolio_Weight": new_portfolio_weight,
+            # "Kc_Matrix": self.__get_Kx_State(self.kc_matrix, self.time_index + 1),
+            # "Ko_Matrix": self.__get_Kx_State(self.ko_matrix, self.time_index + 1),
+            # "Kh_Matrix": self.__get_Kx_State(self.kh_matrix, self.time_index + 1),
+            # "Kl_Matrix": self.__get_Kx_State(self.kl_matrix, self.time_index + 1),
+            # "Kv_Matrix": self.__get_Kx_State(self.kv_matrix, self.time_index + 1),
+            "Xt_Matrix": self.__get_Xt_State(self.time_index + 1),
+            "Portfolio_Weight": self.__concat_weight(
+                new_portfolio_weight, new_cash_weight
+            ),
         }
 
         return new_state, reward, done
