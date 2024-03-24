@@ -35,6 +35,18 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             default=1e4,
             help="the size of each trading in terms of currency",
         )
+        parser.add_argument(
+            "--episode_length",
+            type=int,
+            default=200,
+            help="the length of each episode",
+        )
+        parser.add_argument(
+            "--distribution_beta",
+            type=float,
+            default=0.5,
+            help="the beta parameter for the distribution, range from 0 to 1",
+        )
 
     def __init__(
         self,
@@ -45,7 +57,41 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         super().__init__(args, data, device)
         logger.info("initializing DiscreteRealDataEnv1")
 
-        self.time_index = 1
+        self.episode_range = []
+        self.episode_length = args.episode_length
+        for end_time_index in range(
+            self.data.time_dimension() - 1, 1, -self.episode_length
+        ):
+            start_time_index = end_time_index - self.episode_length
+            self.episode_range.append(
+                {"start_time_index": start_time_index, "end_time_index": end_time_index}
+            )
+        self.episode_range.reverse()
+        self.episode_num = len(self.episode_range)
+        if self.episode_num == 0:
+            raise ValueError("no valid episode range found")
+
+        self.time_index = self.episode_range[0]["start_time_index"]
+        self.start_time_index = self.episode_range[0]["start_time_index"]
+        self.end_time_index = self.episode_range[0]["end_time_index"]
+        self.episode = 0
+
+        beta = args.distribution_beta
+        self.accumulated_prob = []
+        for episode in range(0, self.episode_num):
+            prob = (
+                beta
+                * (1 - beta) ** (self.episode_num - episode - 1)
+                / (1 - (1 - beta) ** self.episode_num)
+            )
+            if episode == 0:
+                self.accumulated_prob.append(prob)
+            else:
+                self.accumulated_prob.append(prob + self.accumulated_prob[-1])
+        self.accumulated_prob = torch.tensor(
+            self.accumulated_prob, dtype=torch.float32, device=self.device
+        )
+
         self.portfolio_value = torch.tensor(args.initial_balance, device=self.device)
         self.trading_size = torch.tensor(args.trading_size, device=self.device)
 
@@ -111,6 +157,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     def to(self, device: str) -> None:
         logger.info("Changing device to %s", device)
         self.device = torch.device(device)
+        self.accumulated_prob = self.accumulated_prob.to(self.device)
         self.portfolio_value = self.portfolio_value.to(self.device)
         self.trading_size = self.trading_size.to(self.device)
         self.portfolio_weight = self.portfolio_weight.to(self.device)
@@ -123,8 +170,22 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.price_change_matrix = self.price_change_matrix.to(self.device)
         self.all_actions = [a.to(self.device) for a in self.all_actions]
 
+    def sample_distribution_and_set_episode(self) -> int:
+        # sample according to self.accumulated_prob
+        prob = torch.rand(1, device=self.device)
+        for episode in range(0, self.episode_num):
+            if prob < self.accumulated_prob[episode]:
+                self.set_episode(episode)
+                return episode
+
+    def set_episode(self, episode: int) -> None:
+        self.episode = episode
+        self.time_index = self.episode_range[episode]["start_time_index"]
+        self.start_time_index = self.episode_range[episode]["start_time_index"]
+        self.end_time_index = self.episode_range[episode]["end_time_index"]
+
     def time_range(self) -> range:
-        return range(1, self.data.time_dimension() - 1)
+        return range(self.start_time_index, self.end_time_index)
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         return {
@@ -150,7 +211,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         return torch.Size([len(self.asset_codes)])
 
     def get_state(self) -> Optional[Dict[str, torch.Tensor]]:
-        if self.time_index < self.window_size - 1:
+        if self.time_index - self.start_time_index < self.window_size - 1:
             return None
         return {
             "Kc_Matrix": self.__get_Kx_State(self.kc_matrix),
@@ -189,7 +250,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
 
         reward = (new_portfolio_value - static_portfolio_value) / static_portfolio_value
 
-        done = self.time_index == self.data.time_dimension() - 2
+        done = self.time_index == self.end_time_index - 1
 
         new_state = {
             "Kc_Matrix": self.__get_Kx_State(self.kc_matrix, self.time_index + 1),
@@ -246,7 +307,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
 
     def reset(self, args: argparse.Namespace) -> None:
         logger.info("resetting DiscreteRealDataEnv1")
-        self.time_index = 1
+        self.time_index = self.start_time_index
         self.portfolio_value = torch.tensor(args.initial_balance, device=self.device)
         self.portfolio_weight = torch.zeros(len(self.asset_codes), device=self.device)
         self.cash_weight = torch.tensor(1.0, device=self.device)

@@ -21,6 +21,3 @@ class BasicRealDataEnv(BaseEnv):
         self.data = data
         self.asset_codes = data.asset_codes
         self.time_zone = args.time_zone
-
-    def possible_actions(self) -> List[torch.tensor]:
-        raise NotImplementedError("possible_action not implemented")

@@ -204,6 +204,13 @@ def parse_args() -> argparse.Namespace:
         default=5,
         help="The number of time steps to look back at",
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+        choices=["cpu", "cuda"],
+        help="The device to run the model on",
+    )
 
     args, _ = parser.parse_known_args()
 
@@ -245,7 +252,7 @@ def main() -> None:
     data.uniform_time(args.time_zone)
 
     # set up environment
-    env = registered_envs[args.env](args, data)
+    env = registered_envs[args.env](args, data, args.device)
 
     agent = registered_agents[args.model](args, env)
     agent.train()

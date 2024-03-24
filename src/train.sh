@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python3 train.py \
-    --model DQN \
+    --model MultiDQN \
     --env DiscreteRealDataEnv1 \
     --asset_code AAPL AMZN GOOGL MSFT \
     --start_date 2024-01-01 \
