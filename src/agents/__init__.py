@@ -1,13 +1,15 @@
 import os
 import importlib
-from typing import Callable, Type, Dict
+from typing import Callable, Type, Dict, TypeVar
 
 
 registered_agents: Dict[str, Type] = {}
 
+T = TypeVar("T")
 
-def register_agent(agent_name: str) -> Callable[[Type], Type]:
-    def decorator(agent_cls) -> Type:
+
+def register_agent(agent_name: str) -> Callable[[T], T]:
+    def decorator(agent_cls: T) -> T:
         registered_agents[agent_name] = agent_cls
         return agent_cls
 

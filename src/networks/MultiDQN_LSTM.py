@@ -86,7 +86,7 @@ class LSTMEncoder(nn.Module):
         )
 
     def forward(self, Xt: torch.Tensor) -> torch.Tensor:
-        Xt = Xt.permute(2, 0, 1)
+        Xt = Xt.permute(2, 1, 0)
         _, (hn, _) = self.LSTM(Xt)
         return hn.squeeze(0)
 

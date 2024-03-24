@@ -267,7 +267,7 @@ def main() -> None:
     # set up environment
     env = registered_envs[args.env](args, data, args.device)
 
-    agent = registered_agents[args.agent](args, env)
+    agent = registered_agents[args.agent](args, env, args.device)
     agent.train()
 
     exit(-1)

@@ -532,6 +532,8 @@ def _save_asset_hist(base_path: str, hist: pd.DataFrame) -> None:
 def _get_asset_hist(base_path: str) -> pd.DataFrame:
     path = f"{base_path}/hist.csv"
     hist = pd.read_csv(path, index_col=0, parse_dates=True)
+    if hist.index.dtype != "datetime64[ns]":
+        hist.index = pd.to_datetime(hist.index, utc=True)
     logger.debug(f"Loaded asset history from: {path}")
     return hist
 

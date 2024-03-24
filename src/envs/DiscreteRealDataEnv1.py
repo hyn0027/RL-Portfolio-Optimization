@@ -1,27 +1,20 @@
 import argparse
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple
 import copy
 from itertools import product
 from utils.logging import get_logger
+import torch
 
 
 from envs import register_env
 from data import Data
 from envs.BasicRealDataEnv import BasicRealDataEnv
-import torch
 
 logger = get_logger("DiscreteRealDataEnv1")
 
 
 @register_env("DiscreteRealDataEnv1")
 class DiscreteRealDataEnv1(BasicRealDataEnv):
-    """
-    references:
-        https://arxiv.org/abs/1907.03665
-        https://github.com/Jogima-cyber/portfolio-manager
-    The environment for discrete action space, used by DQN in the paper.
-    """
-
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DiscreteRealDataEnv1, DiscreteRealDataEnv1).add_args(parser)
@@ -132,12 +125,24 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
                     / asset_previous_data["Volume"]
                 )
                 new_price.append(asset_data["Close"])
-            kc_list.append(torch.tensor(new_kc, device=self.device))
-            ko_list.append(torch.tensor(new_ko, device=self.device))
-            kh_list.append(torch.tensor(new_kh, device=self.device))
-            kl_list.append(torch.tensor(new_kl, device=self.device))
-            kv_list.append(torch.tensor(new_kv, device=self.device))
-            price_list.append(torch.tensor(new_price, device=self.device))
+            kc_list.append(
+                torch.tensor(new_kc, dtype=torch.float32, device=self.device)
+            )
+            ko_list.append(
+                torch.tensor(new_ko, dtype=torch.float32, device=self.device)
+            )
+            kh_list.append(
+                torch.tensor(new_kh, dtype=torch.float32, device=self.device)
+            )
+            kl_list.append(
+                torch.tensor(new_kl, dtype=torch.float32, device=self.device)
+            )
+            kv_list.append(
+                torch.tensor(new_kv, dtype=torch.float32, device=self.device)
+            )
+            price_list.append(
+                torch.tensor(new_price, dtype=torch.float32, device=self.device)
+            )
 
         kc_matrix = torch.stack(kc_list, dim=1)
         ko_matrix = torch.stack(ko_list, dim=1)
@@ -190,8 +195,11 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     def time_range(self) -> range:
         return range(self.start_time_index, self.end_time_index)
 
-    def total_time_range(self) -> range:
-        return range(1, self.data.time_dimension() - 1)
+    def pretrain_time_range(self) -> range:
+        return range(self.window_size, self.data.time_dimension() - 100)
+
+    def pretrain_eval_time_range(self) -> filter:
+        return range(self.data.time_dimension() - 100, self.data.time_dimension() - 1)
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         return {
@@ -209,10 +217,10 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         return torch.Size([len(self.asset_codes)])
 
     def get_state(self) -> Optional[Dict[str, torch.Tensor]]:
-        if self.time_index - self.start_time_index < self.window_size - 1:
+        if self.time_index - self.start_time_index < self.window_size:
             return None
         return {
-            "Xt_Matrix": self.__get_Xt_State(),
+            "Xt_Matrix": self.__get_Xt_state(),
             "Portfolio_Weight": self.__concat_weight(
                 self.portfolio_weight, self.cash_weight
             ),
@@ -223,10 +231,17 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     ) -> torch.Tensor:
         return torch.cat((cash_weight.unsqueeze(0), portfolio_weight), dim=0)
 
-    def __get_Xt_State(self, time_index: Optional[int] = None) -> torch.Tensor:
+    def __get_Xt_state(self, time_index: Optional[int] = None) -> torch.Tensor:
         if time_index is None:
             time_index = self.time_index
-        return self.Xt_matrix[:, :, time_index - self.window_size + 1 : time_index]
+        return self.Xt_matrix[:, :, time_index - self.window_size : time_index]
+
+    def get_Xt_state_and_pretrain_target(
+        self, time_index: int
+    ) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
+        if time_index < self.window_size:
+            return None
+        return self.__get_Xt_state(time_index), self.Xt_matrix[:, :, time_index]
 
     def __get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
@@ -237,7 +252,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
 
     def act(
         self, action: torch.Tensor
-    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, bool]:
+    ) -> Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
         if action.size() != self.action_dimension():
             raise ValueError("action dimension not match")
         if self.find_action_index(action) == -1:
@@ -255,7 +270,11 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         done = self.time_index == self.end_time_index - 1
 
         new_state = {
-            "Xt_Matrix": self.__get_Xt_State(self.time_index + 1),
+            "Xt_Matrix": (
+                self.__get_Xt_state(self.time_index + 1)
+                if self.time_index - self.start_time_index >= self.window_size
+                else None
+            ),
             "Portfolio_Weight": self.__concat_weight(
                 new_portfolio_weight, new_cash_weight
             ),
