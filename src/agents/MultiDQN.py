@@ -40,7 +40,8 @@ class MultiDQN(BaseAgent):
         parser.add_argument(
             "--pretrain_epochs",
             type=int,
-            default=50,
+            # default=50,
+            default=5,
             help="number of epochs for pretraining",
         )
         parser.add_argument(
@@ -52,7 +53,8 @@ class MultiDQN(BaseAgent):
         parser.add_argument(
             "--train_batch_size",
             type=int,
-            default=32,
+            # default=32,
+            default=4,
             help="batch size for training",
         )
         parser.add_argument(
@@ -88,7 +90,7 @@ class MultiDQN(BaseAgent):
         parser.add_argument(
             "--DQN_epsilon_decay",
             type=float,
-            default=0.995,
+            default=0.99,
             help="epsilon decay for DQN",
         )
         parser.add_argument(
@@ -137,7 +139,13 @@ class MultiDQN(BaseAgent):
         self.epsilon: float = args.DQN_epsilon
         self.epsilon_decay: float = args.DQN_epsilon_decay
         self.epsilon_min: float = args.DQN_epsilon_min
-        self.replay = Replay(args.replay_window)
+        self.replay = Replay(args.train_batch_size, args.replay_window)
+        self.train_optimizer = optim.Adam(
+            self.Q_network.parameters(), lr=self.train_learning_rate
+        )
+        self.train_optimizer.zero_grad()
+        self.loss_scale = 1
+        self.loss_min = torch.tensor(0.0001, dtype=self.dtype, device=self.device)
 
     def train(self) -> None:
         self.pretrain()
@@ -156,16 +164,18 @@ class MultiDQN(BaseAgent):
             logger.info(f"Epoch {epoch+1}/{self.pretrain_epochs}")
             self.Q_network.train()
             optimizer.zero_grad()
-            running_loss = torch.tensor(0.0, device=self.device)
+            running_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
             batch_cnt = 0
-            total_loss = torch.tensor(0.0, device=self.device)
+            total_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
             logger.info("Training")
             for time_index in tqdm(self.env.pretrain_train_time_range(shuffle=True)):
                 data = self.env.get_Xt_state_and_pretrain_target(time_index)
                 if data is None:
                     continue
                 Xt_state, pretrain_target = data
-                out = self.Q_network(Xt_state, torch.empty(0, device=self.device), True)
+                out = self.Q_network(
+                    Xt_state, torch.empty(0, dtype=self.dtype, device=self.device), True
+                )
                 loss = criterion(out, pretrain_target.permute(1, 0))
                 running_loss += loss
                 total_loss += loss
@@ -174,14 +184,16 @@ class MultiDQN(BaseAgent):
                     running_loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
-                    running_loss = torch.tensor(0.0, device=self.device)
+                    running_loss = torch.tensor(
+                        0.0, dtype=self.dtype, device=self.device
+                    )
             if batch_cnt % self.pretrain_batch_size != 0:
                 running_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
             train_avg_loss = total_loss / batch_cnt
             self.Q_network.eval()
-            total_loss = torch.tensor(0.0, device=self.device)
+            total_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
             batch_cnt = 0
             logger.info("Evaluating")
             for time_index in tqdm(self.env.pretrain_eval_time_range()):
@@ -189,7 +201,9 @@ class MultiDQN(BaseAgent):
                 if data is None:
                     continue
                 Xt_state, pretrain_target = data
-                out = self.Q_network(Xt_state, torch.empty(0, device=self.device), True)
+                out = self.Q_network(
+                    Xt_state, torch.empty(0, dtype=self.dtype, device=self.device), True
+                )
                 loss = criterion(out, pretrain_target.permute(1, 0))
                 total_loss += loss
                 batch_cnt += 1
@@ -224,7 +238,87 @@ class MultiDQN(BaseAgent):
             episode = self.env.sample_distribution_and_set_episode()
             self.env.set_episode(episode)
             self.env.reset(self.args)
-            for time_index in tqdm(self.env.train_time_range()):
+            time_indices = self.env.train_time_range()
+            progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+            total_reward = torch.tensor(1.0, dtype=self.dtype, device=self.device)
+            for time_index in time_indices:
                 state = self.env.get_state()
-                if state is None or random.random() < self.epsilon:
-                    continue
+                if state is None:
+                    possible_action_indexes = self.env.possible_action_indexes()
+                    action_index = int(
+                        possible_action_indexes[
+                            random.randint(0, len(possible_action_indexes) - 1)
+                        ].item()
+                    )
+                else:
+                    Xt = state["Xt_Matrix"]
+                    wt = state["Portfolio_Weight"]
+
+                    experience_list = []
+                    for possible_action_index in self.env.possible_action_indexes():
+                        new_state, reward, done = self.env.act(possible_action_index)
+                        if done:
+                            break
+                        experience_list.append(
+                            (state, possible_action_index, reward, new_state)
+                        )
+                    if len(experience_list) > 0:
+                        self.replay.remember(experience_list)
+
+                    if random.random() < self.epsilon:
+                        possible_action_indexes = self.env.possible_action_indexes()
+                        action_index = int(
+                            possible_action_indexes[
+                                random.randint(0, len(possible_action_indexes) - 1)
+                            ].item()
+                        )
+                    else:
+                        action_q_value = self.Q_network(Xt, wt, False)
+                        action_index = int(torch.argmax(action_q_value).item())
+                        action_index = self.env.action_mapping(
+                            action_index, action_q_value
+                        )
+                new_state, reward, done = self.env.act(action_index)
+                self.env.update(action_index)
+                total_reward = (reward / 100.0 + 1) * total_reward
+                loss = self.update_Q_network()
+                self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+                progress_bar.update(1)
+                progress_bar.set_description(
+                    f"Loss: {loss:.4f}, Reward: {total_reward.item():.4f}, Epsilon: {self.epsilon:.4f}, Loss Scale: {self.loss_scale}"
+                )
+            self.update_target_network()
+
+    def update_Q_network(self) -> float:
+        if not self.replay.has_enough_samples():
+            return float("nan")
+        K = self.replay.sample()
+        loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
+        for L in K:
+            for state, action_index, reward, new_state in L:
+                Xt = state["Xt_Matrix"]
+                wt = state["Portfolio_Weight"]
+                new_Xt = new_state["Xt_Matrix"]
+                new_wt = new_state["Portfolio_Weight"]
+                target_q_values = self.target_Q_network(new_Xt, new_wt, False)
+                best_action_index = int(torch.argmax(target_q_values).item())
+                best_action_index = self.env.action_mapping(
+                    best_action_index, target_q_values
+                )
+                target_q_value = (
+                    reward + self.gamma * target_q_values[best_action_index]
+                )
+                q_value = self.Q_network(Xt, wt, False)[action_index]
+                loss += (q_value - target_q_value) ** 2
+        loss = loss * self.loss_scale
+        if loss < self.loss_min:
+            loss = loss * 4.0
+            self.loss_scale *= 4
+        loss.backward()
+        self.train_optimizer.step()
+        self.train_optimizer.zero_grad()
+        return loss.item()
+
+    def update_target_network(self) -> None:
+        self.target_Q_network.load_state_dict(self.Q_network.state_dict())
+        logger.info("Target network updated")

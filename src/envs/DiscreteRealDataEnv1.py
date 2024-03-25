@@ -65,6 +65,8 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             self.data.time_dimension() - 1, 1, -self.episode_length
         ):
             start_time_index = end_time_index - self.episode_length
+            if start_time_index < self.window_size:
+                break
             self.episode_range.append(
                 {"start_time_index": start_time_index, "end_time_index": end_time_index}
             )
@@ -114,7 +116,6 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         price_list = []
         for time_index in range(1, self.data.time_dimension()):
             new_kc, new_ko, new_kh, new_kl, new_kv = [], [], [], [], []
-            new_price = []
             for asset_code in self.asset_codes:
                 asset_data = self.data.get_asset_hist_at_time(
                     asset_code, self.data.time_list[time_index]
@@ -140,12 +141,16 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
                     (asset_data["Volume"] - asset_previous_data["Volume"])
                     / asset_previous_data["Volume"]
                 )
-                new_price.append(asset_data["Close"])
             kc_list.append(torch.tensor(new_kc, dtype=self.dtype, device=self.device))
             ko_list.append(torch.tensor(new_ko, dtype=self.dtype, device=self.device))
             kh_list.append(torch.tensor(new_kh, dtype=self.dtype, device=self.device))
             kl_list.append(torch.tensor(new_kl, dtype=self.dtype, device=self.device))
             kv_list.append(torch.tensor(new_kv, dtype=self.dtype, device=self.device))
+
+        for time_index in range(0, self.data.time_dimension()):
+            new_price = []
+            for asset_code in self.asset_codes:
+                new_price.append(asset_data["Close"])
             price_list.append(
                 torch.tensor(new_price, dtype=self.dtype, device=self.device)
             )
@@ -229,7 +234,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         return torch.Size([len(self.asset_codes)])
 
     def get_state(self) -> Optional[Dict[str, torch.Tensor]]:
-        if self.time_index - self.start_time_index < self.window_size:
+        if self.time_index < self.window_size:
             return None
         return {
             "Xt_Matrix": self.__get_Xt_state(),
@@ -263,12 +268,11 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         return self.price_change_matrix[:, time_index - 1]
 
     def act(
-        self, action: torch.Tensor
+        self, action: int
     ) -> Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
-        if action.size() != self.action_dimension():
-            raise ValueError("action dimension not match")
-        if self.find_action_index(action) == -1:
+        if action < 0 or action >= len(self.all_actions):
             raise ValueError("action not valid")
+        action = self.all_actions[action]
 
         (
             new_portfolio_weight,
@@ -277,14 +281,18 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             static_portfolio_value,
         ) = self.get_new_portfolio_weight_and_value(action)
 
-        reward = (new_portfolio_value - static_portfolio_value) / static_portfolio_value
+        reward = (
+            (new_portfolio_value - static_portfolio_value)
+            / static_portfolio_value
+            * 100
+        )
 
         done = self.time_index == self.end_time_index - 1
 
         new_state = {
             "Xt_Matrix": (
                 self.__get_Xt_state(self.time_index + 1)
-                if self.time_index - self.start_time_index >= self.window_size
+                if self.time_index + 1 >= self.window_size
                 else None
             ),
             "Portfolio_Weight": self.__concat_weight(
@@ -340,11 +348,14 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             static_portfolio_value,
         )
 
-    def update(self, action: torch.Tensor) -> None:
-        self.time_index += 1
+    def update(self, action: int) -> None:
+        if action < 0 or action >= len(self.all_actions):
+            raise ValueError("action not valid")
+        action = self.all_actions[action]
         self.portfolio_weight, self.cash_weight, self.portfolio_value, _ = (
             self.get_new_portfolio_weight_and_value(action)
         )
+        self.time_index += 1
 
     def reset(self, args: argparse.Namespace) -> None:
         logger.info("resetting DiscreteRealDataEnv1")
@@ -382,52 +393,55 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
                 return i
         return -1
 
-    def possible_action_index(self) -> torch.Tensor:
-        possible_action_index = []
+    def possible_action_indexes(self) -> torch.Tensor:
+        possible_action_indexes = []
         for idx, action in enumerate(self.all_actions):
             if self.__action_validity(action):
-                possible_action_index.append(idx)
+                possible_action_indexes.append(idx)
         return torch.tensor(
-            possible_action_index, dtype=torch.int32, device=self.device
+            possible_action_indexes, dtype=torch.int32, device=self.device
         )
 
-    def action_mapping(
-        self, action: torch.Tensor, Q_Values: torch.Tensor
-    ) -> torch.Tensor:
-        if self.find_action_index(action) == -1:
+    def action_mapping(self, action_index: int, Q_Values: torch.Tensor) -> int:
+        if action_index < 0 or action_index >= len(self.all_actions):
             raise ValueError("action not valid")
+        action = self.all_actions[action_index]
         if self.__asset_shortage(action):
             return self.__action_mapping_rule2(action, Q_Values)
         elif self.__cash_shortage(action):
-            return self.__action_mapping_rule1(action)
-        return copy.deepcopy(action)
+            return self.__action_mapping_rule1(action, Q_Values)
+        return action_index
 
     def __action_mapping_rule1(
         self, action: torch.Tensor, Q_Values: torch.Tensor
-    ) -> torch.Tensor:
-        possible_action_index = []
+    ) -> int:
+        possible_action_indexes = []
         for idx, new_action in enumerate(self.all_actions):
             if (
-                torch.all(new_action[action == 1] == 1)
-                and torch.all(action[new_action == 1] == 1)
+                torch.all(new_action[action == -1] == -1)
+                and torch.all(action[new_action == -1] == -1)
                 and torch.all(new_action[action == 0] == 0)
                 and self.__action_validity(new_action)
             ):
-                possible_action_index.append(idx)
+                possible_action_indexes.append(idx)
 
-        possible_values = Q_Values[possible_action_index]
+        possible_values = Q_Values[possible_action_indexes]
         max_index = torch.argmax(possible_values)
-        return copy.deepcopy(self.all_actions[possible_action_index[max_index]])
+        return possible_action_indexes[max_index]
 
     def __action_mapping_rule2(
         self, action: torch.Tensor, Q_Values: torch.Tensor
-    ) -> torch.Tensor:
+    ) -> int:
         new_action = copy.deepcopy(action)
-        condition = (
-            self.portfolio_weight[new_action < 0] * self.portfolio_value
-            < torch.abs(new_action[new_action < 0]) * self.trading_size
+        # for all index i where new_action[i] < 0 and self.portfolio_weight[i] * self.portfolio_value < abs(new_action[i]) * self.trading_size
+        # set new_action[i] = 0
+        # condition =
+
+        condition = (new_action < 0) & (
+            self.portfolio_weight * self.portfolio_value
+            < torch.abs(new_action) * self.trading_size
         )
         new_action[condition] = 0
         if self.__cash_shortage(new_action):
             return self.__action_mapping_rule1(new_action, Q_Values)
-        return new_action
+        return self.find_action_index(new_action)

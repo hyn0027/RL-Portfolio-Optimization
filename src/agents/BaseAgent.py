@@ -24,6 +24,7 @@ class BaseAgent:
             else torch.device(device)
         )
         self.fp16 = args.fp16
+        self.dtype = torch.float16 if args.fp16 else torch.float32
         self.args = args
 
     def train(self) -> None:

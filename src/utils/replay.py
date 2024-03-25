@@ -21,3 +21,9 @@ class Replay:
     def reset(self) -> None:
         self.memory.clear()
         logger.info("Replay memory cleared")
+
+    def __len__(self) -> int:
+        return len(self.memory)
+
+    def has_enough_samples(self) -> bool:
+        return len(self.memory) >= self.batch_size
