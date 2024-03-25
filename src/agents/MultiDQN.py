@@ -232,6 +232,7 @@ class MultiDQN(BaseAgent):
     def multiDQN_train(self) -> None:
         self.replay.reset()
         self.target_Q_network.load_state_dict(self.Q_network.state_dict())
+        self.Q_network.train()
         for epoch in range(self.train_epochs):
             episode = self.env.sample_distribution_and_set_episode()
             self.env.set_episode(episode)
