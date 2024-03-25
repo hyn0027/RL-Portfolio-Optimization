@@ -3,6 +3,7 @@ from utils.logging import get_logger
 from typing import Optional
 from datetime import datetime
 import os
+import random
 from utils.file import create_path_recursively
 
 from agents import register_agent
@@ -78,6 +79,24 @@ class MultiDQN(BaseAgent):
             default=0.9,
             help="discount factor for DQN",
         )
+        parser.add_argument(
+            "--DQN_epsilon",
+            type=float,
+            default=1.0,
+            help="epsilon for DQN",
+        )
+        parser.add_argument(
+            "--DQN_epsilon_decay",
+            type=float,
+            default=0.995,
+            help="epsilon decay for DQN",
+        )
+        parser.add_argument(
+            "--DQN_epsilon_min",
+            type=float,
+            default=0.01,
+            help="minimum epsilon for DQN",
+        )
 
     def __init__(
         self,
@@ -108,13 +127,16 @@ class MultiDQN(BaseAgent):
         total_params = sum(p.numel() for p in self.Q_network.parameters())
         logger.info(f"Total number of parameters: {total_params}")
 
-        self.pretrain_epochs = args.pretrain_epochs
-        self.pretrain_batch_size = args.pretrain_batch_size
-        self.pretrain_learning_rate = args.pretrain_learning_rate
-        self.train_epochs = args.train_epochs
-        self.train_batch_size = args.train_batch_size
-        self.train_learning_rate = args.train_learning_rate
-        self.gamma = args.DQN_gamma
+        self.pretrain_epochs: int = args.pretrain_epochs
+        self.pretrain_batch_size: int = args.pretrain_batch_size
+        self.pretrain_learning_rate: float = args.pretrain_learning_rate
+        self.train_epochs: int = args.train_epochs
+        self.train_batch_size: int = args.train_batch_size
+        self.train_learning_rate: float = args.train_learning_rate
+        self.gamma: float = args.DQN_gamma
+        self.epsilon: float = args.DQN_epsilon
+        self.epsilon_decay: float = args.DQN_epsilon_decay
+        self.epsilon_min: float = args.DQN_epsilon_min
         self.replay = Replay(args.replay_window)
 
     def train(self) -> None:
@@ -203,4 +225,6 @@ class MultiDQN(BaseAgent):
             self.env.set_episode(episode)
             self.env.reset(self.args)
             for time_index in tqdm(self.env.train_time_range()):
-                pass
+                state = self.env.get_state()
+                if state is None or random.random() < self.epsilon:
+                    continue

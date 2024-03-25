@@ -43,6 +43,12 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             default=0.3,
             help="the beta parameter for the distribution, range from 0 to 1",
         )
+        parser.add_argument(
+            "--transaction_cost_rate",
+            type=float,
+            default=0.0025,
+            help="the transaction cost rate for each trading",
+        )
 
     def __init__(
         self,
@@ -99,6 +105,9 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             len(self.asset_codes), dtype=self.dtype, device=self.device
         )
         self.cash_weight = torch.tensor(1.0, dtype=self.dtype, device=self.device)
+        self.transaction_cost_rate = torch.tensor(
+            args.transaction_cost_rate, dtype=self.dtype, device=self.device
+        )
 
         # compute all Kx in advance
         kc_list, ko_list, kh_list, kl_list, kv_list = [], [], [], [], []
@@ -171,6 +180,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.trading_size = self.trading_size.to(self.device)
         self.portfolio_weight = self.portfolio_weight.to(self.device)
         self.cash_weight = self.cash_weight.to(self.device)
+        self.transaction_cost_rate = self.transaction_cost_rate.to(self.device)
         self.Xt_matrix = self.Xt_matrix.to(self.device)
         self.price_change_matrix = self.price_change_matrix.to(self.device)
         self.all_actions = [a.to(self.device) for a in self.all_actions]
@@ -291,13 +301,23 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         new_portfolio_weight = (
             self.portfolio_weight + action * self.trading_size / self.portfolio_value
         )
+        # add transaction cost
+        transaction_cost = (
+            torch.sum(torch.abs(action) * self.trading_size)
+            * self.transaction_cost_rate
+        )
+        new_portfolio_value = self.portfolio_value - transaction_cost
+        new_portfolio_weight = (
+            new_portfolio_weight * self.portfolio_value / new_portfolio_value
+        )
         new_cash_weight = torch.tensor(
             1.0, dtype=self.dtype, device=self.device
         ) - torch.sum(new_portfolio_weight)
+
         # changing to the next day
         # portfolio_value = value * (price change vec * portfolio_weight + cash_weight)
         price_change_rate = self.__get_price_change_ratio_tensor(self.time_index + 1)
-        new_portfolio_value = self.portfolio_value * (
+        new_portfolio_value = new_portfolio_value * (
             torch.sum(price_change_rate * new_portfolio_weight) + new_cash_weight
         )
         static_portfolio_value = self.portfolio_value * (
@@ -338,8 +358,12 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.cash_weight = torch.tensor(1.0, dtype=self.dtype, device=self.device)
 
     def __cash_shortage(self, action: torch.Tensor) -> bool:
+        transaction_cost = (
+            torch.sum(torch.abs(action) * self.trading_size)
+            * self.transaction_cost_rate
+        )
         return (
-            torch.sum(action * self.trading_size)
+            torch.sum(action * self.trading_size) + transaction_cost
             > self.portfolio_value * self.cash_weight
         )
 
