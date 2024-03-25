@@ -33,6 +33,8 @@ class BaseEnv:
             if device is None
             else torch.device(device)
         )
+        self.fp16 = args.fp16
+        self.dtype = torch.float16 if args.fp16 else torch.float32
 
     def to(self, device: str) -> None:
         """move the environment to the given device

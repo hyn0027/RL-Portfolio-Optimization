@@ -1,10 +1,11 @@
 import argparse
+import os
 
 from utils.logging import set_up_logging, get_logger
 from agents import registered_agents
 from envs import registered_envs
 from networks import registered_networks
-from data import load_data_object
+from utils.data import load_data_object
 
 logger = get_logger("train")
 
@@ -113,6 +114,12 @@ def parse_args() -> argparse.Namespace:
         help="Base data path to save the asset data",
     )
     parser.add_argument(
+        "--model_save_path",
+        type=str,
+        default="../model",
+        help="Path to save the model",
+    )
+    parser.add_argument(
         "--reload_data",
         action="store_true",
         help="Reload the data from the source",
@@ -219,6 +226,11 @@ def parse_args() -> argparse.Namespace:
         default="cpu",
         choices=["cpu", "cuda"],
         help="The device to run the model on",
+    )
+    parser.add_argument(
+        "--fp16",
+        action="store_true",
+        help="Use mixed precision training",
     )
 
     args, _ = parser.parse_known_args()

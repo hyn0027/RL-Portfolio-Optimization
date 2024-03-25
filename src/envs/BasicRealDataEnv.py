@@ -2,7 +2,7 @@ import argparse
 from typing import List, Optional
 import torch
 
-from data import Data
+from utils.data import Data
 from envs.BaseEnv import BaseEnv
 
 

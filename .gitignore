@@ -110,3 +110,5 @@ logs/
 
 .vscode/
 .VSCodeCounter/
+
+model/

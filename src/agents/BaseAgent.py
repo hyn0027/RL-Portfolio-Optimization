@@ -23,6 +23,8 @@ class BaseAgent:
             if device is None
             else torch.device(device)
         )
+        self.fp16 = args.fp16
+        self.args = args
 
     def train(self) -> None:
         raise NotImplementedError("train method not implemented")

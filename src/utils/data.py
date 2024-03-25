@@ -3,6 +3,7 @@ import json
 import argparse
 from utils.logging import set_up_logging, get_logger
 from typing import Optional, Dict, Tuple, List, Any
+from utils.file import create_path_recursively
 
 import yfinance as yf
 import pandas as pd
@@ -396,8 +397,7 @@ def get_and_save_asset_data(
         base_data_path, asset_code, start_date, end_date, interval, period, reload
     )
 
-    if not os.path.exists(base_path):
-        os.makedirs(base_path)
+    create_path_recursively(base_path)
 
     _save_asset_info(base_path, info)
     _save_asset_hist(base_path, hist)
@@ -448,8 +448,7 @@ def save_asset_data(
         base_data_path, asset_code, start_date, end_date, interval, period, reload
     )
 
-    if not os.path.exists(base_path):
-        os.makedirs(base_path)
+    create_path_recursively(base_path)
 
     _save_asset_info(base_path, info)
     _save_asset_hist(base_path, hist)

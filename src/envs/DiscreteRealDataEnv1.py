@@ -1,13 +1,14 @@
 import argparse
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 import copy
 from itertools import product
 from utils.logging import get_logger
 import torch
+import random
 
 
 from envs import register_env
-from data import Data
+from utils.data import Data
 from envs.BasicRealDataEnv import BasicRealDataEnv
 
 logger = get_logger("DiscreteRealDataEnv1")
@@ -84,14 +85,20 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             else:
                 self.accumulated_prob.append(prob + self.accumulated_prob[-1])
         self.accumulated_prob = torch.tensor(
-            self.accumulated_prob, dtype=torch.float32, device=self.device
+            self.accumulated_prob, dtype=self.dtype, device=self.device
         )
 
-        self.portfolio_value = torch.tensor(args.initial_balance, device=self.device)
-        self.trading_size = torch.tensor(args.trading_size, device=self.device)
+        self.portfolio_value = torch.tensor(
+            args.initial_balance, dtype=self.dtype, device=self.device
+        )
+        self.trading_size = torch.tensor(
+            args.trading_size, dtype=self.dtype, device=self.device
+        )
 
-        self.portfolio_weight = torch.zeros(len(self.asset_codes), device=self.device)
-        self.cash_weight = torch.tensor(1.0, device=self.device)
+        self.portfolio_weight = torch.zeros(
+            len(self.asset_codes), dtype=self.dtype, device=self.device
+        )
+        self.cash_weight = torch.tensor(1.0, dtype=self.dtype, device=self.device)
 
         # compute all Kx in advance
         kc_list, ko_list, kh_list, kl_list, kv_list = [], [], [], [], []
@@ -125,23 +132,13 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
                     / asset_previous_data["Volume"]
                 )
                 new_price.append(asset_data["Close"])
-            kc_list.append(
-                torch.tensor(new_kc, dtype=torch.float32, device=self.device)
-            )
-            ko_list.append(
-                torch.tensor(new_ko, dtype=torch.float32, device=self.device)
-            )
-            kh_list.append(
-                torch.tensor(new_kh, dtype=torch.float32, device=self.device)
-            )
-            kl_list.append(
-                torch.tensor(new_kl, dtype=torch.float32, device=self.device)
-            )
-            kv_list.append(
-                torch.tensor(new_kv, dtype=torch.float32, device=self.device)
-            )
+            kc_list.append(torch.tensor(new_kc, dtype=self.dtype, device=self.device))
+            ko_list.append(torch.tensor(new_ko, dtype=self.dtype, device=self.device))
+            kh_list.append(torch.tensor(new_kh, dtype=self.dtype, device=self.device))
+            kl_list.append(torch.tensor(new_kl, dtype=self.dtype, device=self.device))
+            kv_list.append(torch.tensor(new_kv, dtype=self.dtype, device=self.device))
             price_list.append(
-                torch.tensor(new_price, dtype=torch.float32, device=self.device)
+                torch.tensor(new_price, dtype=self.dtype, device=self.device)
             )
 
         kc_matrix = torch.stack(kc_list, dim=1)
@@ -180,7 +177,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
 
     def sample_distribution_and_set_episode(self) -> int:
         # sample according to self.accumulated_prob
-        prob = torch.rand(1, device=self.device)
+        prob = torch.rand(1, dtype=self.dtype, device=self.device)
         for episode in range(0, self.episode_num):
             if prob < self.accumulated_prob[episode]:
                 self.set_episode(episode)
@@ -192,13 +189,18 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.start_time_index = self.episode_range[episode]["start_time_index"]
         self.end_time_index = self.episode_range[episode]["end_time_index"]
 
-    def time_range(self) -> range:
+    def train_time_range(self) -> range:
         return range(self.start_time_index, self.end_time_index)
 
-    def pretrain_time_range(self) -> range:
+    def pretrain_train_time_range(self, shuffle: bool = True) -> List:
+        range_list = list(range(self.window_size + 100, self.data.time_dimension() - 1))
+        if shuffle:
+            random.shuffle(range_list)
+        return range_list
         return range(self.window_size, self.data.time_dimension() - 100)
 
     def pretrain_eval_time_range(self) -> filter:
+        return range(self.window_size, self.window_size + 100)
         return range(self.data.time_dimension() - 100, self.data.time_dimension() - 1)
 
     def state_dimension(self) -> Dict[str, torch.Size]:
@@ -289,9 +291,9 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         new_portfolio_weight = (
             self.portfolio_weight + action * self.trading_size / self.portfolio_value
         )
-        new_cash_weight = torch.tensor(1.0, device=self.device) - torch.sum(
-            new_portfolio_weight
-        )
+        new_cash_weight = torch.tensor(
+            1.0, dtype=self.dtype, device=self.device
+        ) - torch.sum(new_portfolio_weight)
         # changing to the next day
         # portfolio_value = value * (price change vec * portfolio_weight + cash_weight)
         price_change_rate = self.__get_price_change_ratio_tensor(self.time_index + 1)
@@ -308,9 +310,9 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             * self.portfolio_value
             / new_portfolio_value
         )
-        new_cash_weight = torch.tensor(1.0, device=self.device) - torch.sum(
-            new_portfolio_weight
-        )
+        new_cash_weight = torch.tensor(
+            1.0, dtype=self.dtype, device=self.device
+        ) - torch.sum(new_portfolio_weight)
         return (
             new_portfolio_weight,
             new_cash_weight,
@@ -327,9 +329,13 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     def reset(self, args: argparse.Namespace) -> None:
         logger.info("resetting DiscreteRealDataEnv1")
         self.time_index = self.start_time_index
-        self.portfolio_value = torch.tensor(args.initial_balance, device=self.device)
-        self.portfolio_weight = torch.zeros(len(self.asset_codes), device=self.device)
-        self.cash_weight = torch.tensor(1.0, device=self.device)
+        self.portfolio_value = torch.tensor(
+            args.initial_balance, dtype=self.dtype, device=self.device
+        )
+        self.portfolio_weight = torch.zeros(
+            len(self.asset_codes), dtype=self.dtype, device=self.device
+        )
+        self.cash_weight = torch.tensor(1.0, dtype=self.dtype, device=self.device)
 
     def __cash_shortage(self, action: torch.Tensor) -> bool:
         return (
