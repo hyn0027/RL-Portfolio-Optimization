@@ -6,6 +6,7 @@ from agents import registered_agents
 from envs import registered_envs
 from networks import registered_networks
 from utils.data import load_data_object
+from evaluate.evaluator import Evaluator
 
 logger = get_logger("train")
 
@@ -238,6 +239,8 @@ def parse_args() -> argparse.Namespace:
         default=10,
         help="Number of threads to use for data loading",
     )
+    
+    Evaluator.add_args(parser)
 
     args, _ = parser.parse_known_args()
 

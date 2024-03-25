@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 import random
 from utils.file import create_path_recursively
+from evaluate.evaluator import Evaluator
 
 from agents import register_agent
 from agents.BaseAgent import BaseAgent
@@ -103,47 +104,61 @@ class MultiDQN(BaseAgent):
         args: argparse.Namespace,
         env: DiscreteRealDataEnv1,
         device: Optional[str] = None,
+        test_mode: bool = False,
     ) -> None:
         logger.info("Initializing MultiDQN")
 
-        super().__init__(args, env, device)
+        super().__init__(args, env, device, test_mode)
         self.env = env
 
-        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        self.model_save_path = os.path.join(
-            args.model_save_path, "MultiDQN", current_time
-        )
-        create_path_recursively(self.model_save_path)
+        if not self.test_mode:
+            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            self.model_save_path = os.path.join(
+                args.model_save_path, "MultiDQN", current_time
+            )
+            create_path_recursively(self.model_save_path)
 
-        self.Q_network: nn.Module = registered_networks[args.network](args)
-        self.target_Q_network = registered_networks[args.network](args)
-        if self.fp16:
-            self.Q_network.half()
-            self.target_Q_network.half()
-        self.Q_network.to(self.device)
-        self.target_Q_network.to(self.device)
+            self.Q_network: nn.Module = registered_networks[args.network](args)
+            self.target_Q_network = registered_networks[args.network](args)
+            if self.fp16:
+                self.Q_network.half()
+                self.target_Q_network.half()
+            self.Q_network.to(self.device)
+            self.target_Q_network.to(self.device)
 
-        logger.info(self.Q_network)
-        total_params = sum(p.numel() for p in self.Q_network.parameters())
-        logger.info(f"Total number of parameters: {total_params}")
+            logger.info(self.Q_network)
+            total_params = sum(p.numel() for p in self.Q_network.parameters())
+            logger.info(f"Total number of parameters: {total_params}")
 
-        self.pretrain_epochs: int = args.pretrain_epochs
-        self.pretrain_batch_size: int = args.pretrain_batch_size
-        self.pretrain_learning_rate: float = args.pretrain_learning_rate
-        self.train_epochs: int = args.train_epochs
-        self.train_batch_size: int = args.train_batch_size
-        self.train_learning_rate: float = args.train_learning_rate
-        self.gamma: float = args.DQN_gamma
-        self.epsilon: float = args.DQN_epsilon
-        self.epsilon_decay: float = args.DQN_epsilon_decay
-        self.epsilon_min: float = args.DQN_epsilon_min
-        self.replay = Replay(args.train_batch_size, args.replay_window)
-        self.train_optimizer = optim.Adam(
-            self.Q_network.parameters(), lr=self.train_learning_rate
-        )
-        self.train_optimizer.zero_grad()
-        self.loss_scale = 1
-        self.loss_min = torch.tensor(0.0001, dtype=self.dtype, device=self.device)
+            self.pretrain_epochs: int = args.pretrain_epochs
+            self.pretrain_batch_size: int = args.pretrain_batch_size
+            self.pretrain_learning_rate: float = args.pretrain_learning_rate
+            self.train_epochs: int = args.train_epochs
+            self.train_batch_size: int = args.train_batch_size
+            self.train_learning_rate: float = args.train_learning_rate
+            self.gamma: float = args.DQN_gamma
+            self.epsilon: float = args.DQN_epsilon
+            self.epsilon_decay: float = args.DQN_epsilon_decay
+            self.epsilon_min: float = args.DQN_epsilon_min
+            self.replay = Replay(args.train_batch_size, args.replay_window)
+            self.train_optimizer = optim.Adam(
+                self.Q_network.parameters(), lr=self.train_learning_rate
+            )
+            self.train_optimizer.zero_grad()
+            self.loss_scale = 1
+            self.loss_min = torch.tensor(0.0001, dtype=self.dtype, device=self.device)
+        else:
+            self.Q_network: nn.Module = registered_networks[args.network](args)
+            logger.info(self.Q_network)
+            if not args.model_load_path:
+                raise ValueError("model_load_path is required for testing")
+            logger.info(f"loading model from {args.model_load_path}")
+            self.Q_network.load_state_dict(
+                torch.load(args.model_load_path, map_location=self.device)
+            )
+            logger.info(f"model loaded from {args.model_load_path}")
+            self.Q_network.to(self.device)
+            self.evaluate = Evaluator(args)
 
     def train(self) -> None:
         self.pretrain()
@@ -155,7 +170,7 @@ class MultiDQN(BaseAgent):
             self.Q_network.parameters(), lr=self.pretrain_learning_rate
         )
 
-        save_path = os.path.join(self.model_save_path, "pretrain_model_best.pth")
+        save_path = os.path.join(self.model_save_path, "pretrain_best_checkpoint.pth")
         logger.info("Starting pretraining")
         lowest_loss = float("inf")
         for epoch in range(self.pretrain_epochs):
@@ -231,10 +246,9 @@ class MultiDQN(BaseAgent):
 
     def multiDQN_train(self) -> None:
         self.Q_network.train()
-        self.train_optimizer.zero_grad()
+        self.target_Q_network.eval()
         self.replay.reset()
         self.target_Q_network.load_state_dict(self.Q_network.state_dict())
-        self.Q_network.train()
         for epoch in range(self.train_epochs):
             episode = self.env.sample_distribution_and_set_episode()
             self.env.set_episode(episode)
@@ -288,7 +302,7 @@ class MultiDQN(BaseAgent):
             logger.info(
                 f"Finish epoch {epoch+1}/{self.train_epochs}, epsilon: {self.epsilon:.5f}, portfolio value: {self.env.portfolio_value:.5f}"
             )
-            save_path = os.path.join(self.model_save_path, f"Q_net_{epoch}.pth")
+            save_path = os.path.join(self.model_save_path, f"Q_net_last_checkpoint.pth")
             logger.info(f"Saving model to {save_path}")
             torch.save(
                 self.Q_network.state_dict(),
@@ -297,8 +311,6 @@ class MultiDQN(BaseAgent):
             logger.info(f"Model saved to {save_path}")
 
     def update_Q_network(self) -> float:
-        self.Q_network.train()
-        self.target_Q_network.eval()
         if not self.replay.has_enough_samples():
             return float("nan")
         K = self.replay.sample()
@@ -330,3 +342,30 @@ class MultiDQN(BaseAgent):
     def update_target_network(self) -> None:
         self.target_Q_network.load_state_dict(self.Q_network.state_dict())
         logger.info("Target network updated")
+
+    def test(self) -> None:
+        self.Q_network.eval()
+        self.env.set_episode_for_testing()
+        self.env.reset(self.args)
+        time_indices = self.env.test_time_range()
+        progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+        for _ in time_indices:
+            state = self.env.get_state()
+            if state is None:
+                possible_action_indexes = self.env.possible_action_indexes()
+                action_index = int(
+                    possible_action_indexes[
+                        random.randint(0, len(possible_action_indexes) - 1)
+                    ].item()
+                )
+            else:
+                Xt = state["Xt_Matrix"]
+                wt = state["Portfolio_Weight"]
+                action_q_value = self.Q_network(Xt, wt, False)
+                action_index = int(torch.argmax(action_q_value).item())
+                action_index = self.env.action_mapping(action_index, action_q_value)
+            new_state, reward, done = self.env.act(action_index)
+            portfolio_value = self.env.portfolio_value.item()
+            self.env.update(action_index)
+            progress_bar.update(1)
+        progress_bar.close()
