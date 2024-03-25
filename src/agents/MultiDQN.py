@@ -230,6 +230,8 @@ class MultiDQN(BaseAgent):
         logger.info(f"Best model loaded from {save_path}")
 
     def multiDQN_train(self) -> None:
+        self.Q_network.train()
+        self.train_optimizer.zero_grad()
         self.replay.reset()
         self.target_Q_network.load_state_dict(self.Q_network.state_dict())
         self.Q_network.train()
@@ -295,6 +297,8 @@ class MultiDQN(BaseAgent):
             logger.info(f"Model saved to {save_path}")
 
     def update_Q_network(self) -> float:
+        self.Q_network.train()
+        self.target_Q_network.eval()
         if not self.replay.has_enough_samples():
             return float("nan")
         K = self.replay.sample()
@@ -305,14 +309,15 @@ class MultiDQN(BaseAgent):
                 wt = state["Portfolio_Weight"]
                 new_Xt = new_state["Xt_Matrix"]
                 new_wt = new_state["Portfolio_Weight"]
-                target_q_values = self.target_Q_network(new_Xt, new_wt, False)
-                best_action_index = int(torch.argmax(target_q_values).item())
-                best_action_index = self.env.action_mapping(
-                    best_action_index, target_q_values
-                )
-                target_q_value = (
-                    reward + self.gamma * target_q_values[best_action_index]
-                )
+                with torch.no_grad():
+                    target_q_values = self.target_Q_network(new_Xt, new_wt, False)
+                    best_action_index = int(torch.argmax(target_q_values).item())
+                    best_action_index = self.env.action_mapping(
+                        best_action_index, target_q_values
+                    )
+                    target_q_value = (
+                        reward + self.gamma * target_q_values[best_action_index]
+                    )
                 q_value = self.Q_network(Xt, wt, False)[action_index]
                 loss += ((q_value - target_q_value) ** 2) * self.loss_scale
         if loss < self.loss_min:

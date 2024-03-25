@@ -9,5 +9,5 @@ python3 train.py \
     --end_date 2023-01-01 \
     --interval 1d \
     --device cuda \
-    --pretrain_epochs 50 \
+    --pretrain_epochs 1 \
     --train_batch_size 16
