@@ -14,7 +14,7 @@ class ColoredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         color_format = (
             self.COLORS.get(record.levelname, "")
-            + f"[%(levelname)s %(module)s:%(lineno)d]"
+            + f"[%(asctime)s %(levelname)s %(module)s:%(lineno)d]"
             + self.COLORS["ENDC"]
             + "%(message)s"
         )

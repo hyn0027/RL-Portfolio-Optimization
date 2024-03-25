@@ -54,7 +54,7 @@ class MultiDQN(BaseAgent):
             "--train_batch_size",
             type=int,
             # default=32,
-            default=4,
+            default=16,
             help="batch size for training",
         )
         parser.add_argument(
@@ -241,6 +241,7 @@ class MultiDQN(BaseAgent):
             time_indices = self.env.train_time_range()
             progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
             total_reward = torch.tensor(1.0, dtype=self.dtype, device=self.device)
+            total_loss = 0.0
             for time_index in time_indices:
                 state = self.env.get_state()
                 if state is None:
@@ -282,12 +283,18 @@ class MultiDQN(BaseAgent):
                 self.env.update(action_index)
                 total_reward = (reward / 100.0 + 1) * total_reward
                 loss = self.update_Q_network()
+                total_loss += loss
                 self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+                # progress_bar.set_description(
+                #     f"Loss: {loss:.4f}, Reward: {total_reward.item():.4f}, Epsilon: {self.epsilon:.4f}, Loss Scale: {self.loss_scale}"
+                # )
                 progress_bar.update(1)
-                progress_bar.set_description(
-                    f"Loss: {loss:.4f}, Reward: {total_reward.item():.4f}, Epsilon: {self.epsilon:.4f}, Loss Scale: {self.loss_scale}"
-                )
+            # flush output
+            progress_bar.refresh()
             self.update_target_network()
+            logger.info(
+                f"Finish epoch {epoch+1}/{self.train_epochs}, Total Reward: {total_reward.item():.4f}"
+            )
 
     def update_Q_network(self) -> float:
         if not self.replay.has_enough_samples():
@@ -309,11 +316,9 @@ class MultiDQN(BaseAgent):
                     reward + self.gamma * target_q_values[best_action_index]
                 )
                 q_value = self.Q_network(Xt, wt, False)[action_index]
-                loss += (q_value - target_q_value) ** 2
-        loss = loss * self.loss_scale
+                loss += ((q_value - target_q_value) ** 2) * self.loss_scale
         if loss < self.loss_min:
-            loss = loss * 4.0
-            self.loss_scale *= 4
+            self.loss_scale *= 2
         loss.backward()
         self.train_optimizer.step()
         self.train_optimizer.zero_grad()
