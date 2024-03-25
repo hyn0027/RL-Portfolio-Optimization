@@ -232,6 +232,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Use mixed precision training",
     )
+    parser.add_argument(
+        "--num_threads",
+        type=int,
+        default=10,
+        help="Number of threads to use for data loading",
+    )
 
     args, _ = parser.parse_known_args()
 

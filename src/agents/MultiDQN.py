@@ -238,8 +238,7 @@ class MultiDQN(BaseAgent):
             self.env.reset(self.args)
             time_indices = self.env.train_time_range()
             progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
-            total_reward = torch.tensor(1.0, dtype=self.dtype, device=self.device)
-            for time_index in time_indices:
+            for _ in time_indices:
                 state = self.env.get_state()
                 if state is None:
                     possible_action_indexes = self.env.possible_action_indexes()
@@ -278,14 +277,13 @@ class MultiDQN(BaseAgent):
                         )
                 new_state, reward, done = self.env.act(action_index)
                 self.env.update(action_index)
-                total_reward = (reward / 100.0 + 1) * total_reward
-                loss = self.update_Q_network()
+                self.update_Q_network()
                 self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
                 progress_bar.update(1)
             progress_bar.close()
             self.update_target_network()
             logger.info(
-                f"Finish epoch {epoch+1}/{self.train_epochs}, Total Reward: {total_reward.item():.4f}"
+                f"Finish epoch {epoch+1}/{self.train_epochs}, epsilon: {self.epsilon:.5f}, portfolio value: {self.env.portfolio_value:.5f}"
             )
             save_path = os.path.join(self.model_save_path, f"Q_net_{epoch}.pth")
             logger.info(f"Saving model to {save_path}")

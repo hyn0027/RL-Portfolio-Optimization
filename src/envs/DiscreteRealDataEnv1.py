@@ -113,7 +113,6 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
 
         # compute all Kx in advance
         kc_list, ko_list, kh_list, kl_list, kv_list = [], [], [], [], []
-        price_list = []
         for time_index in range(1, self.data.time_dimension()):
             new_kc, new_ko, new_kh, new_kl, new_kv = [], [], [], [], []
             for asset_code in self.asset_codes:
@@ -147,9 +146,13 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             kl_list.append(torch.tensor(new_kl, dtype=self.dtype, device=self.device))
             kv_list.append(torch.tensor(new_kv, dtype=self.dtype, device=self.device))
 
+        price_list = []
         for time_index in range(0, self.data.time_dimension()):
             new_price = []
             for asset_code in self.asset_codes:
+                asset_data = self.data.get_asset_hist_at_time(
+                    asset_code, self.data.time_list[time_index]
+                )
                 new_price.append(asset_data["Close"])
             price_list.append(
                 torch.tensor(new_price, dtype=self.dtype, device=self.device)
@@ -212,11 +215,9 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         if shuffle:
             random.shuffle(range_list)
         return range_list
-        return range(self.window_size, self.data.time_dimension() - 100)
 
     def pretrain_eval_time_range(self) -> filter:
         return range(self.window_size, self.window_size + 100)
-        return range(self.data.time_dimension() - 100, self.data.time_dimension() - 1)
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         return {
@@ -273,6 +274,8 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         if action < 0 or action >= len(self.all_actions):
             raise ValueError("action not valid")
         action = self.all_actions[action]
+        if not self.__action_validity(action):
+            raise ValueError("action not valid")
 
         (
             new_portfolio_weight,
@@ -433,9 +436,6 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self, action: torch.Tensor, Q_Values: torch.Tensor
     ) -> int:
         new_action = copy.deepcopy(action)
-        # for all index i where new_action[i] < 0 and self.portfolio_weight[i] * self.portfolio_value < abs(new_action[i]) * self.trading_size
-        # set new_action[i] = 0
-        # condition =
 
         condition = (new_action < 0) & (
             self.portfolio_weight * self.portfolio_value

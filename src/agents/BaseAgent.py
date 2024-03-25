@@ -16,6 +16,7 @@ class BaseAgent:
         env: BaseEnv,
         device: Optional[str] = None,
     ) -> None:
+        torch.set_num_threads(args.num_threads)
         self.asset_codes = args.asset_codes
         self.env = env
         self.device = (
