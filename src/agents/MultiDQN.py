@@ -40,8 +40,7 @@ class MultiDQN(BaseAgent):
         parser.add_argument(
             "--pretrain_epochs",
             type=int,
-            # default=50,
-            default=5,
+            default=50,
             help="number of epochs for pretraining",
         )
         parser.add_argument(
@@ -53,8 +52,7 @@ class MultiDQN(BaseAgent):
         parser.add_argument(
             "--train_batch_size",
             type=int,
-            # default=32,
-            default=16,
+            default=32,
             help="batch size for training",
         )
         parser.add_argument(
@@ -90,7 +88,7 @@ class MultiDQN(BaseAgent):
         parser.add_argument(
             "--DQN_epsilon_decay",
             type=float,
-            default=0.99,
+            default=0.999,
             help="epsilon decay for DQN",
         )
         parser.add_argument(
@@ -241,7 +239,6 @@ class MultiDQN(BaseAgent):
             time_indices = self.env.train_time_range()
             progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
             total_reward = torch.tensor(1.0, dtype=self.dtype, device=self.device)
-            total_loss = 0.0
             for time_index in time_indices:
                 state = self.env.get_state()
                 if state is None:
@@ -283,18 +280,20 @@ class MultiDQN(BaseAgent):
                 self.env.update(action_index)
                 total_reward = (reward / 100.0 + 1) * total_reward
                 loss = self.update_Q_network()
-                total_loss += loss
                 self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
-                # progress_bar.set_description(
-                #     f"Loss: {loss:.4f}, Reward: {total_reward.item():.4f}, Epsilon: {self.epsilon:.4f}, Loss Scale: {self.loss_scale}"
-                # )
                 progress_bar.update(1)
-            # flush output
-            progress_bar.refresh()
+            progress_bar.close()
             self.update_target_network()
             logger.info(
                 f"Finish epoch {epoch+1}/{self.train_epochs}, Total Reward: {total_reward.item():.4f}"
             )
+            save_path = os.path.join(self.model_save_path, f"Q_net_{epoch}.pth")
+            logger.info(f"Saving model to {save_path}")
+            torch.save(
+                self.Q_network.state_dict(),
+                save_path,
+            )
+            logger.info(f"Model saved to {save_path}")
 
     def update_Q_network(self) -> float:
         if not self.replay.has_enough_samples():
