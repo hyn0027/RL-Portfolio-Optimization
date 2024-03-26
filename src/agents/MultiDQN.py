@@ -238,8 +238,7 @@ class MultiDQN(BaseAgent):
         logger.info(f"Loading best model from {save_path}")
         self.Q_network.load_state_dict(
             torch.load(
-                os.path.join(self.model_save_path, "pretrain_model_best.pth"),
-                map_location=self.device,
+                save_path, map_location=self.device,
             )
         )
         logger.info(f"Best model loaded from {save_path}")
@@ -252,7 +251,7 @@ class MultiDQN(BaseAgent):
         for epoch in range(self.train_epochs):
             episode = self.env.sample_distribution_and_set_episode()
             self.env.set_episode(episode)
-            self.env.reset(self.args)
+            self.env.reset()
             time_indices = self.env.train_time_range()
             progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
             for _ in time_indices:
@@ -346,7 +345,7 @@ class MultiDQN(BaseAgent):
     def test(self) -> None:
         self.Q_network.eval()
         self.env.set_episode_for_testing()
-        self.env.reset(self.args)
+        self.env.reset()
         time_indices = self.env.test_time_range()
         progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
         for _ in time_indices:
