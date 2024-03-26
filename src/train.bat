@@ -1,6 +1,6 @@
 @echo off
 set PYTHON=python
-set SCRIPT=train.py
+set SCRIPT=run.py
 
 %PYTHON% %SCRIPT% ^
     --agent MultiDQN ^
