@@ -11,6 +11,7 @@ Welcome to RL-Portfolio-Optimization's documentation!
    :caption: Contents:
    modules
 
+.. mdinclude:: ../../README.md
 
 
 Indices and tables
