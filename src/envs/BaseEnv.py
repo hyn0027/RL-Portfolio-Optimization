@@ -22,10 +22,7 @@ class BaseEnv:
             help="the initial balance",
         )
         parser.add_argument(
-            "--risk_free_return",
-            type=float,
-            default=0.0,
-            help="risk free return"
+            "--risk_free_return", type=float, default=0.0, help="risk free return"
         )
         parser.add_argument(
             "--transaction_cost_rate",
@@ -62,9 +59,11 @@ class BaseEnv:
         self.fp16 = args.fp16
         self.dtype = torch.float16 if args.fp16 else torch.float32
         self.time_index = 0
-        
-        self.rf_return = torch.tensor(args.risk_free_return, dtype=self.dtype, device=self.device)
-        
+
+        self.rf_return = torch.tensor(
+            args.risk_free_return, dtype=self.dtype, device=self.device
+        )
+
         self.transaction_cost_rate = torch.tensor(
             args.transaction_cost_rate, dtype=self.dtype, device=self.device
         )
@@ -81,7 +80,7 @@ class BaseEnv:
             self.get_asset_num(), dtype=self.dtype, device=self.device
         )
         self.rf_weight = torch.tensor(1.0, dtype=self.dtype, device=self.device)
-        
+
     def get_asset_num(self) -> int:
         raise NotImplementedError("asset num not implemented")
 
@@ -182,18 +181,18 @@ class BaseEnv:
         self, portfolio_weight: torch.Tensor, rf_weight: torch.Tensor
     ) -> torch.Tensor:
         return torch.cat((rf_weight.unsqueeze(0), portfolio_weight), dim=0)
-    
+
     def _get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
     ) -> torch.tensor:
         raise NotImplementedError("_get_price_change_ratio_tensor not implemented")
-    
+
     def _transaction_cost(self, trading_size: torch.Tensor) -> torch.Tensor:
         return (
-            torch.sum(torch.abs(trading_size)) * self.transaction_cost_rate + 
-            torch.nonzero(trading_size).size(0) * self.transaction_cost_base
+            torch.sum(torch.abs(trading_size)) * self.transaction_cost_rate
+            + torch.nonzero(trading_size).size(0) * self.transaction_cost_base
         )
-        
+
     def _get_new_portfolio_weight_and_value(
         self, trading_size: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -215,7 +214,8 @@ class BaseEnv:
         # portfolio_value = value * (price change vec * portfolio_weight + rf_weight * (rf + 1))
         price_change_rate = self._get_price_change_ratio_tensor(self.time_index + 1)
         new_portfolio_value_next_day = new_portfolio_value * (
-            torch.sum(price_change_rate * new_portfolio_weight) + new_rf_weight * (self.rf_return + 1.0)
+            torch.sum(price_change_rate * new_portfolio_weight)
+            + new_rf_weight * (self.rf_return + 1.0)
         )
         # adjust weight based on new value
         new_portfolio_weight_next_day = (
@@ -227,9 +227,10 @@ class BaseEnv:
         new_rf_weight_next_day = torch.tensor(
             1.0, dtype=self.dtype, device=self.device
         ) - torch.sum(new_portfolio_weight_next_day)
-        
+
         static_portfolio_value = self.portfolio_value * (
-            torch.sum(price_change_rate * self.portfolio_weight) + self.rf_weight * (self.rf_return + 1.0)
+            torch.sum(price_change_rate * self.portfolio_weight)
+            + self.rf_weight * (self.rf_return + 1.0)
         )
         return (
             new_portfolio_weight,
@@ -238,13 +239,13 @@ class BaseEnv:
             new_portfolio_value_next_day,
             static_portfolio_value,
         )
-    
+
     def _cash_shortage(self, trading_size: torch.Tensor) -> bool:
         return (
             torch.sum(trading_size) + self._transaction_cost(trading_size)
             > self.portfolio_value * self.rf_weight
         )
-    
+
     def _asset_shortage(self, trading_size: torch.Tensor) -> bool:
         return torch.any(
             self.portfolio_weight[trading_size < 0] * self.portfolio_value

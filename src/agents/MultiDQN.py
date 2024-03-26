@@ -146,7 +146,8 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         logger.info(f"Loading best model from {save_path}")
         self.Q_network.load_state_dict(
             torch.load(
-                save_path, map_location=self.device,
+                save_path,
+                map_location=self.device,
             )
         )
         logger.info(f"Best model loaded from {save_path}")
@@ -245,7 +246,6 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         self.train_optimizer.step()
         self.train_optimizer.zero_grad()
         return loss.item()
-
 
     def test(self) -> None:
         self.Q_network.eval()

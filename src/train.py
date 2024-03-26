@@ -239,7 +239,7 @@ def parse_args() -> argparse.Namespace:
         default=10,
         help="Number of threads to use for data loading",
     )
-    
+
     Evaluator.add_args(parser)
 
     args, _ = parser.parse_known_args()

@@ -47,7 +47,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         logger.info("initializing DiscreteRealDataEnv1")
 
         super().__init__(args, data, device)
-        
+
         self.episode_range = []
         self.episode_length = args.episode_length
         for end_time_index in range(
@@ -84,13 +84,12 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.accumulated_prob = torch.tensor(
             self.accumulated_prob, dtype=self.dtype, device=self.device
         )
-        
+
         self.trading_size = torch.tensor(
             args.trading_size, dtype=self.dtype, device=self.device
         )
-        
-        self.initialize_weight()
 
+        self.initialize_weight()
 
         # compute all Kx in advance
         kc_list, ko_list, kh_list, kl_list, kv_list = [], [], [], [], []

@@ -13,8 +13,9 @@ import torch
 import torch.nn as nn
 
 
-BaseEnv = TypeVar('BaseEnv')
+BaseEnv = TypeVar("BaseEnv")
 logger = get_logger("DQN")
+
 
 @register_agent("DQN")
 class DQN(BaseAgent[BaseEnv]):
@@ -60,7 +61,7 @@ class DQN(BaseAgent[BaseEnv]):
         test_mode: bool = False,
     ) -> None:
         logger.info("Initializing DQN")
-        
+
         super().__init__(args, env, device, test_mode)
         if not self.test_mode:
             self.Q_network: nn.Module = registered_networks[args.network](args)
@@ -68,14 +69,14 @@ class DQN(BaseAgent[BaseEnv]):
             if self.fp16:
                 self.Q_network.half()
                 self.target_Q_network.half()
-                
+
             self.Q_network.to(self.device)
             self.target_Q_network.to(self.device)
-            
+
             logger.info(self.Q_network)
             total_params = sum(p.numel() for p in self.Q_network.parameters())
             logger.info(f"Total number of parameters: {total_params}")
-            
+
             self.gamma: float = args.DQN_gamma
             self.epsilon: float = args.DQN_epsilon
             self.epsilon_decay: float = args.DQN_epsilon_decay
@@ -84,7 +85,7 @@ class DQN(BaseAgent[BaseEnv]):
         else:
             self.Q_network: nn.Module = registered_networks[args.network](args)
             logger.info(self.Q_network)
-            
+
             if not args.model_load_path:
                 raise ValueError("model_load_path is required for testing")
             logger.info(f"loading model from {args.model_load_path}")
@@ -92,10 +93,10 @@ class DQN(BaseAgent[BaseEnv]):
                 torch.load(args.model_load_path, map_location=self.device)
             )
             logger.info(f"model loaded from {args.model_load_path}")
-            
+
             self.Q_network.to(self.device)
             self.evaluate = Evaluator(args)
-        
+
         logger.info("DQN initialized")
 
     def train(self) -> None:

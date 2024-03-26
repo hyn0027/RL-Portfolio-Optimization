@@ -8,9 +8,10 @@ from utils.file import create_path_recursively
 
 import torch
 
-BaseEnv = TypeVar('BaseEnv')
+BaseEnv = TypeVar("BaseEnv")
 
 logger = get_logger("BaseAgent")
+
 
 class BaseAgent(Generic[BaseEnv]):
     @staticmethod
@@ -40,10 +41,7 @@ class BaseAgent(Generic[BaseEnv]):
             help="learning rate for training",
         )
         parser.add_argument(
-            "--loss_min",
-            type=float,
-            default=0.0001,
-            help="minimal value of loss"
+            "--loss_min", type=float, default=0.0001, help="minimal value of loss"
         )
 
     def __init__(
@@ -65,7 +63,7 @@ class BaseAgent(Generic[BaseEnv]):
         self.dtype = torch.float16 if args.fp16 else torch.float32
         self.args = args
         self.test_mode = test_mode
-        
+
         if not self.test_mode:
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             self.model_save_path = os.path.join(
@@ -75,9 +73,11 @@ class BaseAgent(Generic[BaseEnv]):
             self.train_epochs: int = args.train_epochs
             self.train_batch_size: int = args.train_batch_size
             self.train_learning_rate: float = args.train_learning_rate
-            
+
             self.loss_scale = 1
-            self.loss_min = torch.tensor(args.loss_min, dtype=self.dtype, device=self.device)
+            self.loss_min = torch.tensor(
+                args.loss_min, dtype=self.dtype, device=self.device
+            )
         logger.info("BaseAgent initialized")
 
     def train(self) -> None:

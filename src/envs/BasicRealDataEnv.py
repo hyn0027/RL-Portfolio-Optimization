@@ -8,6 +8,7 @@ from envs.BaseEnv import BaseEnv
 
 logger = get_logger("BasicRealDataEnv")
 
+
 class BasicRealDataEnv(BaseEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
@@ -25,7 +26,7 @@ class BasicRealDataEnv(BaseEnv):
         self.asset_codes = data.asset_codes
         self.time_zone = args.time_zone
         self.asset_num = len(self.asset_codes)
-        
+
         price_list = []
         for time_index in range(0, self.data.time_dimension()):
             new_price = []
@@ -41,20 +42,19 @@ class BasicRealDataEnv(BaseEnv):
         self.price_change_matrix = self.price_matrix[:, 1:] / self.price_matrix[:, :-1]
 
         logger.info("BasicRealDataEnv initialized")
-        
+
     def get_asset_num(self) -> int:
         return self.asset_num
-    
+
     def train_time_range(self) -> range:
         return range(0, self.data.time_dimension())
 
     def test_time_range(self) -> range:
         return range(0, self.data.time_dimension())
-    
+
     def _get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
     ) -> torch.tensor:
         if time_index is None:
             time_index = self.time_index
         return self.price_change_matrix[:, time_index - 1]
-    
