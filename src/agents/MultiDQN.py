@@ -1,18 +1,13 @@
 import argparse
 from utils.logging import get_logger
 from typing import Optional
-from datetime import datetime
 import os
 import random
-from utils.file import create_path_recursively
-from evaluate.evaluator import Evaluator
 
 from agents import register_agent
-from agents.BaseAgent import BaseAgent
+from agents.DQN import DQN
 from envs.DiscreteRealDataEnv1 import DiscreteRealDataEnv1
-from networks import registered_networks
 from tqdm import tqdm
-from utils.replay import Replay
 
 import torch
 import torch.nn as nn
@@ -22,7 +17,7 @@ logger = get_logger("MultiDQN")
 
 
 @register_agent("MultiDQN")
-class MultiDQN(BaseAgent):
+class MultiDQN(DQN[DiscreteRealDataEnv1]):
     """
     references:
         https://arxiv.org/abs/1907.03665
@@ -50,54 +45,6 @@ class MultiDQN(BaseAgent):
             default=0.002,
             help="learning rate for pretraining",
         )
-        parser.add_argument(
-            "--train_batch_size",
-            type=int,
-            default=32,
-            help="batch size for training",
-        )
-        parser.add_argument(
-            "--train_epochs",
-            type=int,
-            default=500,
-            help="number of epochs for training",
-        )
-        parser.add_argument(
-            "--train_learning_rate",
-            type=float,
-            default=0.001,
-            help="learning rate for training",
-        )
-        parser.add_argument(
-            "--replay_window",
-            type=int,
-            default=2000,
-            help="replay window size",
-        )
-        parser.add_argument(
-            "--DQN_gamma",
-            type=float,
-            default=0.9,
-            help="discount factor for DQN",
-        )
-        parser.add_argument(
-            "--DQN_epsilon",
-            type=float,
-            default=1.0,
-            help="epsilon for DQN",
-        )
-        parser.add_argument(
-            "--DQN_epsilon_decay",
-            type=float,
-            default=0.999,
-            help="epsilon decay for DQN",
-        )
-        parser.add_argument(
-            "--DQN_epsilon_min",
-            type=float,
-            default=0.01,
-            help="minimum epsilon for DQN",
-        )
 
     def __init__(
         self,
@@ -109,56 +56,17 @@ class MultiDQN(BaseAgent):
         logger.info("Initializing MultiDQN")
 
         super().__init__(args, env, device, test_mode)
-        self.env = env
 
         if not self.test_mode:
-            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            self.model_save_path = os.path.join(
-                args.model_save_path, "MultiDQN", current_time
-            )
-            create_path_recursively(self.model_save_path)
-
-            self.Q_network: nn.Module = registered_networks[args.network](args)
-            self.target_Q_network = registered_networks[args.network](args)
-            if self.fp16:
-                self.Q_network.half()
-                self.target_Q_network.half()
-            self.Q_network.to(self.device)
-            self.target_Q_network.to(self.device)
-
-            logger.info(self.Q_network)
-            total_params = sum(p.numel() for p in self.Q_network.parameters())
-            logger.info(f"Total number of parameters: {total_params}")
-
             self.pretrain_epochs: int = args.pretrain_epochs
             self.pretrain_batch_size: int = args.pretrain_batch_size
             self.pretrain_learning_rate: float = args.pretrain_learning_rate
-            self.train_epochs: int = args.train_epochs
-            self.train_batch_size: int = args.train_batch_size
-            self.train_learning_rate: float = args.train_learning_rate
-            self.gamma: float = args.DQN_gamma
-            self.epsilon: float = args.DQN_epsilon
-            self.epsilon_decay: float = args.DQN_epsilon_decay
-            self.epsilon_min: float = args.DQN_epsilon_min
-            self.replay = Replay(args.train_batch_size, args.replay_window)
+
             self.train_optimizer = optim.Adam(
                 self.Q_network.parameters(), lr=self.train_learning_rate
             )
             self.train_optimizer.zero_grad()
-            self.loss_scale = 1
-            self.loss_min = torch.tensor(0.0001, dtype=self.dtype, device=self.device)
-        else:
-            self.Q_network: nn.Module = registered_networks[args.network](args)
-            logger.info(self.Q_network)
-            if not args.model_load_path:
-                raise ValueError("model_load_path is required for testing")
-            logger.info(f"loading model from {args.model_load_path}")
-            self.Q_network.load_state_dict(
-                torch.load(args.model_load_path, map_location=self.device)
-            )
-            logger.info(f"model loaded from {args.model_load_path}")
-            self.Q_network.to(self.device)
-            self.evaluate = Evaluator(args)
+        logger.info("MultiDQN initialized")
 
     def train(self) -> None:
         self.pretrain()
@@ -338,9 +246,6 @@ class MultiDQN(BaseAgent):
         self.train_optimizer.zero_grad()
         return loss.item()
 
-    def update_target_network(self) -> None:
-        self.target_Q_network.load_state_dict(self.Q_network.state_dict())
-        logger.info("Target network updated")
 
     def test(self) -> None:
         self.Q_network.eval()
