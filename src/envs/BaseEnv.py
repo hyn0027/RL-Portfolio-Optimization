@@ -22,7 +22,10 @@ class BaseEnv:
             help="the initial balance",
         )
         parser.add_argument(
-            "--risk_free_return", type=float, default=0.0, help="risk free return"
+            "--risk_free_return",
+            type=float,
+            default=0.0,
+            help="risk free return (per time index)",
         )
         parser.add_argument(
             "--transaction_cost_rate",
@@ -50,13 +53,13 @@ class BaseEnv:
         """
         logger.info("Initializing BaseEnv")
         self.args = args
-        self.window_size = args.window_size
+        self.window_size: int = args.window_size
         self.device = (
             torch.device("cuda" if torch.cuda.is_available() else "cpu")
             if device is None
             else torch.device(device)
         )
-        self.fp16 = args.fp16
+        self.fp16: bool = args.fp16
         self.dtype = torch.float16 if args.fp16 else torch.float32
         self.time_index = 0
 

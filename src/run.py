@@ -126,6 +126,12 @@ def parse_args() -> argparse.Namespace:
         help="Reload the data from the source",
     )
     parser.add_argument(
+        "--mode",
+        choices=["train", "test"],
+        default="train",
+        help="Mode to run the agent in",
+    )
+    parser.add_argument(
         "--time_zone",
         type=str,
         default="America/New_York",
@@ -288,8 +294,12 @@ def main() -> None:
     # set up environment
     env = registered_envs[args.env](args, data, args.device)
 
-    agent = registered_agents[args.agent](args, env, args.device)
-    agent.train()
+    if args.mode == "train":
+        agent = registered_agents[args.agent](args, env, args.device, False)
+        agent.train()
+    else:
+        agent = registered_agents[args.agent](args, env, args.device, True)
+        agent.test()
 
     exit(-1)
 

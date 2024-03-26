@@ -3,11 +3,12 @@ from utils.logging import get_logger
 from typing import Optional
 import os
 import random
+from tqdm import tqdm
 
 from agents import register_agent
 from agents.DQN import DQN
 from envs.DiscreteRealDataEnv1 import DiscreteRealDataEnv1
-from tqdm import tqdm
+from evaluate.evaluator import Evaluator
 
 import torch
 import torch.nn as nn
@@ -66,6 +67,9 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                 self.Q_network.parameters(), lr=self.train_learning_rate
             )
             self.train_optimizer.zero_grad()
+
+        else:
+            self.evaluator = Evaluator(args)
         logger.info("MultiDQN initialized")
 
     def train(self) -> None:
@@ -268,8 +272,15 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                 action_q_value = self.Q_network(Xt, wt, False)
                 action_index = int(torch.argmax(action_q_value).item())
                 action_index = self.env.action_mapping(action_index, action_q_value)
-            new_state, reward, done = self.env.act(action_index)
+            new_state, _, _ = self.env.act(action_index)
             portfolio_value = self.env.portfolio_value.item()
+            portfolio_weight_before_trade = self.env.portfolio_weight
+            portfolio_weight_after_trade = new_state["Portfolio_Weight_Today"]
+            self.evaluator.push(
+                portfolio_value,
+                (portfolio_weight_before_trade, portfolio_weight_after_trade),
+            )
             self.env.update(action_index)
             progress_bar.update(1)
         progress_bar.close()
+        self.evaluator.evaluate()

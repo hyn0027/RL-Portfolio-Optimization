@@ -49,7 +49,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         super().__init__(args, data, device)
 
         self.episode_range = []
-        self.episode_length = args.episode_length
+        self.episode_length: int = args.episode_length
         for end_time_index in range(
             self.data.time_dimension() - 1, 1, -self.episode_length
         ):
@@ -69,7 +69,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.end_time_index = self.episode_range[0]["end_time_index"]
         self.episode = 0
 
-        beta = args.distribution_beta
+        beta: float = args.distribution_beta
         self.accumulated_prob = []
         for episode in range(0, self.episode_num):
             prob = (
@@ -134,6 +134,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.Xt_matrix = torch.stack(
             [kc_matrix, ko_matrix, kh_matrix, kl_matrix, kv_matrix], dim=0
         )
+        self.Xt_matrix[torch.isnan(self.Xt_matrix)] = 0
 
         # compute all actions
         self.all_actions = []

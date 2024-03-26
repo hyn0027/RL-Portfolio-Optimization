@@ -59,16 +59,14 @@ class BaseAgent(Generic[BaseEnv]):
             if device is None
             else torch.device(device)
         )
-        self.fp16 = args.fp16
+        self.fp16: bool = args.fp16
         self.dtype = torch.float16 if args.fp16 else torch.float32
         self.args = args
         self.test_mode = test_mode
 
         if not self.test_mode:
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            self.model_save_path = os.path.join(
-                args.model_save_path, "MultiDQN", current_time
-            )
+            self.model_save_path = args.model_save_path
             create_path_recursively(self.model_save_path)
             self.train_epochs: int = args.train_epochs
             self.train_batch_size: int = args.train_batch_size

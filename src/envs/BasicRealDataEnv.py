@@ -24,7 +24,7 @@ class BasicRealDataEnv(BaseEnv):
         super().__init__(args, device)
         self.data = data
         self.asset_codes = data.asset_codes
-        self.time_zone = args.time_zone
+        self.time_zone: str = args.time_zone
         self.asset_num = len(self.asset_codes)
 
         price_list = []
