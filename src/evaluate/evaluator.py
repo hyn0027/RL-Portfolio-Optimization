@@ -10,9 +10,24 @@ logger = get_logger("Evaluator")
 
 
 class Evaluator:
+    """the evaluator to evaluate the portfolio performance"""
+
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         """add arguments to the parser
+
+            to add arguments to the parser, modify the method as follows:
+
+            .. code-block:: python
+
+                @staticmethod
+                def add_args(parser: argparse.ArgumentParser) -> None:
+                    parser.add_argument(
+                        ...
+                    )
+
+
+            then add arguments to the parser
 
         Args:
             parser (argparse.ArgumentParser): the parser to add arguments to
@@ -45,6 +60,11 @@ class Evaluator:
         )
 
     def __init__(self, args: argparse.Namespace) -> None:
+        """initialize the evaluator
+
+        Args:
+            args (argparse.Namespace): the arguments
+        """
         logger.info("Initializing Evaluator")
         self.disable_CR: bool = args.disable_CR
         self.disable_SR: bool = args.disable_SR
@@ -59,7 +79,11 @@ class Evaluator:
         logger.info("Evaluator initialized")
 
     def reset(self, initial_balance: float) -> None:
-        """reset the evaluator"""
+        """reset the evaluator
+
+        Args:
+            initial_balance (float): the initial balance
+        """
         logger.info("Resetting Evaluator")
         self.portfolio_value_list = []
         self.portfolio_weight_list = []
@@ -89,8 +113,9 @@ class Evaluator:
     ) -> None:
         """evaluate the portfolio
 
-        Returns:
-            Tuple[float, float, float, float]: the metrics
+        Raises:
+            ValueError: portfolio_value_list is empty
+            ValueError: portfolio_weight_list is empty
         """
         if len(self.portfolio_value_list) == 0:
             raise ValueError("portfolio_value_list is empty")

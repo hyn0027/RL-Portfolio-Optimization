@@ -14,13 +14,34 @@ logger = get_logger("MultiDQN_LSTM")
 @register_network("MultiDQN_LSTM")
 class MultiDQN_LSTM(nn.Module):
     """
+    The MultiDQN_LSTM model
+
     references:
         https://arxiv.org/abs/1907.03665
+
         https://github.com/Jogima-cyber/portfolio-manager
     """
 
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
+        """add arguments to the parser
+
+            to add arguments to the parser, modify the method as follows:
+
+            .. code-block:: python
+
+                @staticmethod
+                def add_args(parser: argparse.ArgumentParser) -> None:
+                    parser.add_argument(
+                        ...
+                    )
+
+
+            then add arguments to the parser
+
+        Args:
+            parser (argparse.ArgumentParser): the parser to add arguments to
+        """
         parser.add_argument(
             "--LSTM_layers",
             type=int,
@@ -59,6 +80,11 @@ class MultiDQN_LSTM(nn.Module):
         )
 
     def __init__(self, args: argparse.Namespace) -> None:
+        """initialize the MultiDQN_LSTM model
+
+        Args:
+            args (argparse.Namespace): the arguments
+        """
         super().__init__()
         self.encoder = LSTMEncoder(args)
         self.decoder = Decoder(args)
@@ -68,6 +94,16 @@ class MultiDQN_LSTM(nn.Module):
     def forward(
         self, Xt: torch.Tensor, wt: torch.Tensor, pretrain: bool
     ) -> torch.Tensor:
+        """the overridden forward method
+
+        Args:
+            Xt (torch.Tensor): the state tensor Xt
+            wt (torch.Tensor): the weight tensor wt
+            pretrain (bool): is this a pretrain step or not
+
+        Returns:
+            torch.Tensor: the output tensor
+        """
         hn = self.encoder(Xt)
         # hn has size [asset_num, LSTM_output_size]
         if pretrain:
@@ -76,7 +112,14 @@ class MultiDQN_LSTM(nn.Module):
 
 
 class LSTMEncoder(nn.Module):
+    """the LSTM encoder for the MultiDQN_LSTM model"""
+
     def __init__(self, args: argparse.Namespace) -> None:
+        """initialize the LSTM encoder
+
+        Args:
+            args (argparse.Namespace): the arguments
+        """
         super().__init__()
         self.LSTM = nn.LSTM(
             input_size=5,
@@ -86,18 +129,41 @@ class LSTMEncoder(nn.Module):
         )
 
     def forward(self, Xt: torch.Tensor) -> torch.Tensor:
+        """the overridden forward method
+
+        Args:
+            Xt (torch.Tensor): the state tensor Xt
+
+        Returns:
+            torch.Tensor: the output tensor
+        """
         Xt = Xt.permute(2, 1, 0)
         _, (hn, _) = self.LSTM(Xt)
         return hn.squeeze(0)
 
 
 class Decoder(nn.Module):
+    """the decoder for the MultiDQN_LSTM model on pretraining"""
+
     def __init__(self, args: argparse.Namespace) -> None:
+        """initialize the decoder
+
+        Args:
+            args (argparse.Namespace): the arguments
+        """
         super().__init__()
         self.fc1 = nn.Linear(args.LSTM_output_size, args.decoder_hidden_size)
         self.fc2 = nn.Linear(args.decoder_hidden_size, 5)
 
     def forward(self, hn: torch.Tensor) -> torch.Tensor:
+        """the overridden forward method
+
+        Args:
+            hn (torch.Tensor): the hidden state tensor hn from the LSTM encoder
+
+        Returns:
+            torch.Tensor: the output tensor
+        """
         x = self.fc1(hn)
         x = torch.relu(x)
         x = self.fc2(x)
@@ -105,7 +171,14 @@ class Decoder(nn.Module):
 
 
 class DNN(nn.Module):
+    """the DNN for the MultiDQN_LSTM model on training"""
+
     def __init__(self, args: argparse.Namespace) -> None:
+        """initialize the DNN
+
+        Args:
+            args (argparse.Namespace): the arguments
+        """
         super().__init__()
         self.asset_num = len(args.asset_codes)
         self.fc1 = nn.Linear(
@@ -116,6 +189,15 @@ class DNN(nn.Module):
         self.fc3 = nn.Linear(args.DNN_hidden_size_2, 3**self.asset_num)
 
     def forward(self, hn: torch.Tensor, wt: torch.Tensor) -> torch.Tensor:
+        """the overridden forward method
+
+        Args:
+            hn (torch.Tensor): the hidden state tensor hn from the LSTM encoder
+            wt (torch.Tensor): the weight tensor wt
+
+        Returns:
+            torch.Tensor: the output tensor
+        """
         x = self.fc1(
             torch.cat(
                 (

@@ -155,6 +155,12 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.all_actions = [a.to(self.device) for a in self.all_actions]
 
     def sample_distribution_and_set_episode(self) -> int:
+        """sample a distribution and set the episode accordingly
+        please refer to paper https://arxiv.org/abs/1907.03665 for more details
+
+        Returns:
+            int: the episode index
+        """
         # sample according to self.accumulated_prob
         prob = torch.rand(1, dtype=self.dtype, device=self.device)
         for episode in range(0, self.episode_num):
@@ -163,12 +169,18 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
                 return episode
 
     def set_episode(self, episode: int) -> None:
+        """set the episode given the episode index
+
+        Args:
+            episode (int): the episode index
+        """
         self.episode = episode
         self.time_index = self.episode_range[episode]["start_time_index"]
         self.start_time_index = self.episode_range[episode]["start_time_index"]
         self.end_time_index = self.episode_range[episode]["end_time_index"]
 
     def set_episode_for_testing(self) -> None:
+        """special function to set the episode for testing"""
         self.episode = -1
         self.start_time_index = self.window_size
         self.end_time_index = self.data.time_dimension() - 1
@@ -181,30 +193,63 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         return range(self.start_time_index, self.end_time_index)
 
     def pretrain_train_time_range(self, shuffle: bool = True) -> List:
+        """the list of time indices for pretraining
+
+        Args:
+            shuffle (bool, optional): whether to shuffle. Defaults to True.
+
+        Returns:
+            List: the list of time indices
+        """
         range_list = list(range(self.window_size + 100, self.data.time_dimension() - 1))
         if shuffle:
             random.shuffle(range_list)
         return range_list
 
-    def pretrain_eval_time_range(self) -> filter:
+    def pretrain_eval_time_range(self) -> range:
+        """the list of time indices for pretraining evaluation
+
+        Returns:
+            range: the list of time indices
+        """
         return range(self.window_size, self.window_size + 100)
 
     def state_dimension(self) -> Dict[str, torch.Size]:
+        """the dimension of the state tensors, including Xt_Matrix and Portfolio_Weight
+
+        Returns:
+            Dict[str, torch.Size]: the dimension of the state tensors
+        """
         return {
             "Xt_Matrix": torch.Size([5, len(self.asset_codes), self.window_size]),
             "Portfolio_Weight": torch.Size([len(self.asset_codes) + 1]),
         }
 
     def state_tensor_names(self):
+        """the names of the state tensors, including Xt_Matrix and Portfolio_Weight
+
+        Returns:
+            List[str]: the names of the state tensors
+        """
         return [
             "Xt_Matrix",
             "Portfolio_Weight",
         ]
 
     def action_dimension(self) -> torch.Size:
+        """the dimension of the action the agent can take
+
+        Returns:
+            torch.Size: the dimension of the action the agent can take
+        """
         return torch.Size([len(self.asset_codes)])
 
     def get_state(self) -> Optional[Dict[str, torch.Tensor]]:
+        """get the state tensors at the current time, including Xt_Matrix and Portfolio_Weight
+
+        Returns:
+            Dict[str, torch.tensor]: the state tensors
+        """
         if self.time_index < self.window_size:
             return None
         return {
@@ -215,6 +260,15 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         }
 
     def _get_Xt_state(self, time_index: Optional[int] = None) -> torch.Tensor:
+        """get the Xt state tensor at a given time
+
+        Args:
+            time_index (Optional[int], optional): the time_index.
+                Defaults to None, which means to get the Xt state tensor at the current time.
+
+        Returns:
+            torch.Tensor: the Xt state tensor
+        """
         if time_index is None:
             time_index = self.time_index
         return self.Xt_matrix[:, :, time_index - self.window_size : time_index]
@@ -222,6 +276,15 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     def get_Xt_state_and_pretrain_target(
         self, time_index: int
     ) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
+        """get the Xt state tensor and the pretrain target at a given time
+
+        Args:
+            time_index (int): the time index
+
+        Returns:
+            Optional[Tuple[torch.Tensor, torch.Tensor]]:
+                the Xt state tensor and the pretrain target; if the time index is invalid, return None
+        """
         if time_index < self.window_size:
             return None
         return self._get_Xt_state(time_index), self.Xt_matrix[:, :, time_index]
@@ -229,6 +292,19 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     def act(
         self, action: int
     ) -> Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
+        """update the environment with the given action at the given time
+
+        Args:
+            action (int): the id of the action to take
+
+        Raises:
+            ValueError: action not valid
+
+        Returns:
+            Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
+                the new state, the reward, and whether the episode is done
+        """
+
         if action < 0 or action >= len(self.all_actions):
             raise ValueError("action not valid")
         action = self.all_actions[action]
@@ -268,11 +344,31 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     def _get_new_portfolio_weight_and_value(
         self, action: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """get the new portfolio weight and value after trading and transitioning to the next day
+
+        Args:
+            trading_size (torch.Tensor): the trading decision of each asset
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+                the new portfolio weight, the new portfolio weight at the next day,
+                the new risk free weight at the next day, the new portfolio value at the next day,
+                and the portfolio value at the next day with static weight
+        """
+
         # for all action[i], weight[i] += action[i] * trading_size / portfolio_value
         trading_size = action * self.trading_size
         return super()._get_new_portfolio_weight_and_value(trading_size)
 
     def update(self, action: int) -> None:
+        """update the environment with the given action index
+
+        Args:
+            action (int): the id of the action to take
+
+        Raises:
+            ValueError: the action is not valid
+        """
         if action < 0 or action >= len(self.all_actions):
             raise ValueError("action not valid")
         action = self.all_actions[action]
@@ -280,26 +376,64 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         super().update(trading_size)
 
     def reset(self) -> None:
+        """reset the environment to the initial state"""
         logger.info("resetting DiscreteRealDataEnv1")
         self.time_index = self.start_time_index
         super().initialize_weight()
 
     def _cash_shortage(self, action: torch.Tensor) -> bool:
+        """assert whether there is cash shortage after trading
+
+        Args:
+            action (torch.Tensor): the trading decision of each asset
+
+        Returns:
+            bool: whether there is cash shortage after trading
+        """
         return super()._cash_shortage(action * self.trading_size)
 
     def _asset_shortage(self, action: torch.Tensor) -> bool:
+        """assert whether there is asset shortage after trading
+
+        Args:
+            action (torch.Tensor): the trading decision of each asset
+
+        Returns:
+            bool: whether there is asset shortage after trading
+        """
         return super()._asset_shortage(action * self.trading_size)
 
     def _action_validity(self, action: torch.Tensor) -> bool:
+        """assert whether the action is valid
+
+        Args:
+            action (torch.Tensor): the trading decision of each asset
+
+        Returns:
+            bool: whether the action is valid
+        """
         return not self._cash_shortage(action) and not self._asset_shortage(action)
 
     def find_action_index(self, action: torch.Tensor) -> int:
+        """given an action, find the index of the action in all_actions
+
+        Args:
+            action (torch.Tensor): the trading decision of each asset
+
+        Returns:
+            int: the index of the action in all_actions, -1 if not found
+        """
         for i, a in enumerate(self.all_actions):
             if torch.equal(a, action):
                 return i
         return -1
 
     def possible_action_indexes(self) -> torch.Tensor:
+        """get all possible action indexes
+
+        Returns:
+            torch.Tensor: all possible action indexes
+        """
         possible_action_indexes = []
         for idx, action in enumerate(self.all_actions):
             if self._action_validity(action):
@@ -309,6 +443,18 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         )
 
     def action_mapping(self, action_index: int, Q_Values: torch.Tensor) -> int:
+        """perform action mapping based on the Q values
+
+        Args:
+            action_index (int): the index of the action to map
+            Q_Values (torch.Tensor): the Q values of all actions
+
+        Raises:
+            ValueError: action not valid
+
+        Returns:
+            int: the index of the mapped action
+        """
         if action_index < 0 or action_index >= len(self.all_actions):
             raise ValueError("action not valid")
         action = self.all_actions[action_index]
@@ -321,6 +467,16 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     def _action_mapping_rule1(
         self, action: torch.Tensor, Q_Values: torch.Tensor
     ) -> int:
+        """action mapping rule 1: if there is cash shortage,
+        find the subset action with the highest Q value
+
+        Args:
+            action (torch.Tensor): the trading decision of each asset
+            Q_Values (torch.Tensor): the Q values of all actions
+
+        Returns:
+            int: the index of the mapped action
+        """
         possible_action_indexes = []
         for idx, new_action in enumerate(self.all_actions):
             if (
@@ -338,6 +494,16 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     def _action_mapping_rule2(
         self, action: torch.Tensor, Q_Values: torch.Tensor
     ) -> int:
+        """the action mapping rule 2: if there is asset shortage,
+        don't trade the asset with shortage
+
+        Args:
+            action (torch.Tensor): the trading decision of each asset
+            Q_Values (torch.Tensor): the Q values of all actions
+
+        Returns:
+            int: the index of the mapped action
+        """
         new_action = copy.deepcopy(action)
 
         condition = (new_action < 0) & (

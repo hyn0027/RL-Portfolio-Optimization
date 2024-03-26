@@ -9,6 +9,24 @@ T = TypeVar("T")
 
 
 def register_network(network_name: str) -> Callable[[T], T]:
+    """the decorator to register a network
+
+        to add a new class as a registered network,
+        add the following code to the top of the file:
+
+        .. code-block:: python
+
+            @register_network("network_name")
+            YourEnvClass(BaseEnv):
+                ...
+
+    Args:
+        network_name (str): the name of the registered network
+
+    Returns:
+        Callable[[_T], _T]: the decorator to register the network
+    """
+
     def decorator(network_cls: T) -> T:
         registered_networks[network_name] = network_cls
         return network_cls

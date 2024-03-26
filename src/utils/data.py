@@ -11,94 +11,9 @@ import pandas as pd
 logger = get_logger("data")
 
 
-def parse_args() -> argparse.Namespace:
-    """parse command line arguments
-
-    Returns:
-        argparse.Namespace: parsed arguments
-    """
-
-    parser = argparse.ArgumentParser(description="asset data retriever")
-    parser.add_argument(
-        "--verbose",
-        type=str,
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level",
-    )
-    parser.add_argument(
-        "--asset_codes",
-        nargs="+",
-        type=str,
-        help="A list of asset code to fetch data for. E.g. AAPL, TSLA, MSFT, etc.",
-    )
-    parser.add_argument(
-        "--start_date",
-        type=str,
-        required=False,
-        help="Start date to fetch data from. Format: YYYY-MM-DD",
-    )
-    parser.add_argument(
-        "--end_date",
-        type=str,
-        required=False,
-        help="End date to fetch data from. Format: YYYY-MM-DD",
-    )
-    parser.add_argument(
-        "--interval",
-        type=str,
-        default="1d",
-        choices=[
-            "1m",
-            "2m",
-            "5m",
-            "15m",
-            "30m",
-            "60m",
-            "90m",
-            "1h",
-            "1d",
-            "5d",
-            "1wk",
-            "1mo",
-            "3mo",
-        ],
-        help="Interval to fetch data from.",
-    )
-    parser.add_argument(
-        "--period",
-        type=str,
-        required=False,
-        choices=[
-            "1d",
-            "5d",
-            "1mo",
-            "3mo",
-            "6mo",
-            "1y",
-            "2y",
-            "5y",
-            "10y",
-            "ytd",
-            "max",
-        ],
-        help="Period to fetch data from.",
-    )
-    parser.add_argument(
-        "--base_data_path",
-        type=str,
-        default="../data",
-        help="Base data path to save the asset data",
-    )
-    parser.add_argument(
-        "--reload",
-        action="store_true",
-        help="Whether or not to reload data if the data already exists.",
-    )
-    return parser.parse_args()
-
-
 class SingleData:
+    """the single data class"""
+
     def __init__(
         self,
         asset_code: str,
@@ -108,6 +23,16 @@ class SingleData:
         calls: Dict[str, pd.DataFrame],
         puts: Dict[str, pd.DataFrame],
     ) -> None:
+        """initialize the single data class
+
+        Args:
+            asset_code (str): the asset code
+            info (Dict): the asset info
+            hist (pd.DataFrame): the asset history data
+            option_dates (Tuple): the option dates for the asset
+            calls (Dict[str, pd.DataFrame]): the calls data
+            puts (Dict[str, pd.DataFrame]): the puts data
+        """
         self.asset_code = asset_code
         self.info = info
         self.hist = hist
@@ -117,13 +42,25 @@ class SingleData:
 
 
 class Data:
+    """the Data manager for this project"""
+
     def __init__(self, data: Dict[str, SingleData] = {}) -> None:
+        """initialize the Data manager
+
+        Args:
+            data (Dict[str, SingleData], optional): a dict of SingleData. Defaults to {}.
+        """
         self.data = data
         self.asset_codes = list(data.keys())
-        self.time_list = self.get_time_list()
+        self.time_list = self._get_time_list()
         logger.info(f"Total {len(self.time_list)} time points found.")
 
     def uniform_time(self, time_zone: str = "America/New_York") -> None:
+        """uniform all data time to the given time zone
+
+        Args:
+            time_zone (str, optional): the time zone. Defaults to "America/New_York".
+        """
         logger.info(f"Changing all data timezone to {time_zone}.")
         for asset_code in self.asset_codes:
             self.data[asset_code].hist = self.data[asset_code].hist.tz_convert(
@@ -142,7 +79,12 @@ class Data:
                 )
         logger.info(f"All data timezone changed to {time_zone}.")
 
-    def get_time_list(self) -> List[pd.Timestamp]:
+    def _get_time_list(self) -> List[pd.Timestamp]:
+        """get the list of all time index
+
+        Returns:
+            List[pd.Timestamp]: the list of all time index
+        """
         time_set = set()
         for asset_code in self.asset_codes:
             time_set = time_set.union(set(self.data[asset_code].hist.index))
@@ -151,44 +93,127 @@ class Data:
         return time_list
 
     def get_time_index(self, time: pd.Timestamp) -> int:
+        """get the index of the given time
+
+        Args:
+            time (pd.Timestamp): the given timestamp
+
+        Returns:
+            int: the index of the given time
+        """
         return self.time_list.index(time)
 
     def time_dimension(self) -> int:
+        """the number of time points
+
+        Returns:
+            int: the number of time points
+        """
         return len(self.time_list)
 
     def asset_dimension(self) -> int:
+        """the number of assets
+
+        Returns:
+            int: the number of assets
+        """
         return len(self.asset_codes)
 
     def add_asset_data(self, asset_code: str, data: SingleData) -> None:
+        """add asset data to the data manager
+
+        Args:
+            asset_code (str): the new asset code
+            data (SingleData): the asset data info
+        """
         self.data[asset_code] = data
         self.asset_codes.append(asset_code)
-        self.time_list = self.get_time_list()
+        self.time_list = self._get_time_list()
         logger.info(f"Total {len(self.time_list)} time points found.")
 
     def get_asset_data(self, asset_code: str) -> SingleData:
+        """get the asset data
+
+        Args:
+            asset_code (str): the asset code to get data for
+
+        Returns:
+            SingleData: the asset data
+        """
         return self.data[asset_code]
 
     def get_asset_info(self, asset_code: str) -> Dict[str, Any]:
+        """get the asset info
+
+        Args:
+            asset_code (str): the asset code to get info for
+
+        Returns:
+            Dict[str, Any]: the asset info
+        """
         return self.data[asset_code].info
 
     def get_asset_hist(self, asset_code: str) -> pd.DataFrame:
+        """get the asset history data
+
+        Args:
+            asset_code (str): the asset code to get history data for
+
+        Returns:
+            pd.DataFrame: the asset history data
+        """
         return self.data[asset_code].hist
 
     def get_asset_hist_at_time(
         self, asset_code: str, time: pd.Timestamp
     ) -> Optional[pd.Series]:
+        """the asset history data at the given time
+
+        Args:
+            asset_code (str): the asset code to get history data for
+            time (pd.Timestamp): the timestamp to get history data for
+
+        Returns:
+            Optional[pd.Series]: the asset history data at the given time
+        """
         try:
             return self.data[asset_code].hist.loc[time]
         except KeyError:
             return None
 
     def get_asset_option_dates(self, asset_code: str) -> Tuple:
+        """get the asset option dates
+
+        Args:
+            asset_code (str): the asset code to get option dates for
+
+        Returns:
+            Tuple: the asset option dates
+        """
         return self.data[asset_code].option_dates
 
     def get_asset_calls(self, asset_code: str, date: str) -> pd.DataFrame:
+        """get the asset calls data
+
+        Args:
+            asset_code (str): the asset code to get calls data for
+            date (str): the date to get calls data for
+
+        Returns:
+            pd.DataFrame: the asset calls data
+        """
         return self.data[asset_code].calls[date]
 
     def get_asset_puts(self, asset_code: str, date: str) -> pd.DataFrame:
+        """get the asset puts data
+
+        Args:
+            asset_code (str): the asset code to get puts data for
+            date (str): the date to get puts data for
+
+        Returns:
+            pd.DataFrame: the asset puts data
+        """
         return self.data[asset_code].puts[date]
 
 
@@ -508,6 +533,12 @@ def load_single_data_from_local(
 
 
 def _save_asset_info(base_path: str, info: Dict) -> None:
+    """save asset info to local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+        info (Dict): the asset info to save
+    """
     path = f"{base_path}/info.json"
     with open(path, "w") as json_file:
         json.dump(info, json_file, indent=4)
@@ -515,6 +546,14 @@ def _save_asset_info(base_path: str, info: Dict) -> None:
 
 
 def _get_asset_info(base_path: str) -> Dict:
+    """get asset info from local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+
+    Returns:
+        Dict: the asset info
+    """
     path = f"{base_path}/info.json"
     with open(path, "r") as json_file:
         info = json.load(json_file)
@@ -523,12 +562,26 @@ def _get_asset_info(base_path: str) -> Dict:
 
 
 def _save_asset_hist(base_path: str, hist: pd.DataFrame) -> None:
+    """save asset history to local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+        hist (pd.DataFrame): the asset history to save
+    """
     path = f"{base_path}/hist.csv"
     hist.to_csv(path)
     logger.debug(f"Saved asset history to: {path}")
 
 
 def _get_asset_hist(base_path: str) -> pd.DataFrame:
+    """get asset history from local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+
+    Returns:
+        pd.DataFrame: the asset history
+    """
     path = f"{base_path}/hist.csv"
     hist = pd.read_csv(path, index_col=0, parse_dates=True)
     if hist.index.dtype != "datetime64[ns]":
@@ -538,6 +591,12 @@ def _get_asset_hist(base_path: str) -> pd.DataFrame:
 
 
 def _save_asset_options_dates(base_path: str, option_dates: Tuple) -> None:
+    """save asset option dates to local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+        option_dates (Tuple): the asset option dates to save
+    """
     path = f"{base_path}/option_dates.json"
     with open(path, "w") as json_file:
         json.dump(option_dates, json_file, indent=4)
@@ -545,6 +604,14 @@ def _save_asset_options_dates(base_path: str, option_dates: Tuple) -> None:
 
 
 def _get_asset_options_dates(base_path: str) -> Tuple:
+    """get asset option dates from local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+
+    Returns:
+        Tuple: the asset option dates
+    """
     path = f"{base_path}/option_dates.json"
     with open(path, "r") as json_file:
         option_dates = json.load(json_file)
@@ -553,6 +620,12 @@ def _get_asset_options_dates(base_path: str) -> Tuple:
 
 
 def _save_asset_calls(base_path: str, calls: Dict[str, pd.DataFrame]) -> None:
+    """save asset calls to local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+        calls (Dict[str, pd.DataFrame]): the asset calls to save
+    """
     for date, call in calls.items():
         path = f"{base_path}/calls_{date}.csv"
         call.to_csv(path)
@@ -560,6 +633,15 @@ def _save_asset_calls(base_path: str, calls: Dict[str, pd.DataFrame]) -> None:
 
 
 def _get_asset_calls(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
+    """get asset calls from local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+        dates (Tuple): the dates to get calls data for
+
+    Returns:
+        Dict[str, pd.DataFrame]: the asset calls
+    """
     calls = {}
     for date in dates:
         path = f"{base_path}/calls_{date}.csv"
@@ -570,6 +652,12 @@ def _get_asset_calls(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
 
 
 def _save_asset_puts(base_path: str, puts: Dict[str, pd.DataFrame]) -> None:
+    """save asset puts to local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+        puts (Dict[str, pd.DataFrame]): the asset puts to save
+    """
     for date, put in puts.items():
         path = f"{base_path}/puts_{date}.csv"
         put.to_csv(path)
@@ -577,6 +665,15 @@ def _save_asset_puts(base_path: str, puts: Dict[str, pd.DataFrame]) -> None:
 
 
 def _get_asset_puts(base_path: str, dates: Tuple) -> Dict[str, pd.DataFrame]:
+    """get asset puts from local file
+
+    Args:
+        base_path (str): the base path to save the asset data
+        dates (Tuple): the dates to get puts data for
+
+    Returns:
+        Dict[str, pd.DataFrame]: the asset puts
+    """
     puts = {}
     for date in dates:
         path = f"{base_path}/puts_{date}.csv"
@@ -615,25 +712,3 @@ def _data_path(
         base_data_path,
         f"{asset_code}_{start_date}_{end_date}_{interval}_{period}",
     )
-
-
-def main() -> None:
-    args = parse_args()
-
-    set_up_logging(args.verbose)
-    logger.info(args)
-
-    for asset_code in args.asset_codes:
-        _ = save_asset_data(
-            args.base_data_path,
-            asset_code,
-            args.start_date,
-            args.end_date,
-            args.interval,
-            args.period,
-            args.reload,
-        )
-
-
-if __name__ == "__main__":
-    main()

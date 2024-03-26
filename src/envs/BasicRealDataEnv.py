@@ -20,6 +20,13 @@ class BasicRealDataEnv(BaseEnv):
         data: Data,
         device: Optional[torch.device] = None,
     ) -> None:
+        """initialize the environment
+
+        Args:
+            args (argparse.Namespace): arguments
+            data (Data): data,
+            device (Optional[str], optional): device to run the environment. Defaults to None, which means to use the GPU if available.
+        """
         logger.info("Initializing BasicRealDataEnv")
         super().__init__(args, device)
         self.data = data
@@ -44,17 +51,42 @@ class BasicRealDataEnv(BaseEnv):
         logger.info("BasicRealDataEnv initialized")
 
     def get_asset_num(self) -> int:
+        """get the number of assets, excluding risk-free asset
+
+        Returns:
+            int: the number of assets
+        """
         return self.asset_num
 
     def train_time_range(self) -> range:
+        """the range of time indices
+
+        Returns:
+            range: the range of time indices
+        """
         return range(0, self.data.time_dimension())
 
     def test_time_range(self) -> range:
+        """the range of time indices
+
+        Returns:
+            range: the range of time indices
+        """
         return range(0, self.data.time_dimension())
 
     def _get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
     ) -> torch.tensor:
+        """get the price change ratio tensor at a given time
+
+        Args:
+            time_index (Optional[int], optional):
+                the time index to get the price change ratio.
+                Defaults to None, which means to get the price change ratio at the current time.
+
+        Returns:
+            torch.tensor: the price change ratio tensor
+        """
         if time_index is None:
             time_index = self.time_index
         return self.price_change_matrix[:, time_index - 1]

@@ -266,6 +266,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """the main function to run the training or testing of the agent"""
     set_up_logging()
 
     # Parse command line arguments
