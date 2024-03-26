@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module envs.BaseEnv</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="envs.html"><font color="#ffffff">envs</font></a>.BaseEnv</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/hyn0027/workspace/RL-Portfolio-Optimization/src/envs/BaseEnv.py">/home/hyn0027/workspace/RL-Portfolio-Optimization/src/envs/BaseEnv.py</a></font></td></tr></table>
+    <p></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="argparse.html">argparse</a><br>
+</td><td width="25%" valign=top><a href="torch.html">torch</a><br>
+</td><td width="25%" valign=top></td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="builtins.html#object">builtins.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="envs.BaseEnv.html#BaseEnv">BaseEnv</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="BaseEnv">class <strong>BaseEnv</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#BaseEnv">BaseEnv</a>(args:&nbsp;argparse.Namespace,&nbsp;device:&nbsp;Optional[str]&nbsp;=&nbsp;None)&nbsp;-&amp;gt;&nbsp;None<br>
+&nbsp;<br>
+<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="BaseEnv-__init__"><strong>__init__</strong></a>(self, args: argparse.Namespace, device: Optional[str] = None) -&gt; None</dt><dd><tt>initialize&nbsp;the&nbsp;environment<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;args&nbsp;(argparse.Namespace):&nbsp;arguments<br>
+&nbsp;&nbsp;&nbsp;&nbsp;data&nbsp;(Data):&nbsp;data</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-act"><strong>act</strong></a>(self, action: &lt;built-in method tensor of type object at 0x7f4cbe871840&gt;) -&gt; Tuple[Dict[str, &lt;built-in method tensor of type object at 0x7f4cbe871840&gt;], float, bool]</dt><dd><tt>update&nbsp;the&nbsp;environment&nbsp;with&nbsp;the&nbsp;given&nbsp;action&nbsp;at&nbsp;the&nbsp;given&nbsp;time<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;(torch.tensor):&nbsp;the&nbsp;action&nbsp;to&nbsp;take<br>
+&nbsp;&nbsp;&nbsp;&nbsp;time_index&nbsp;(int):&nbsp;the&nbsp;time&nbsp;index&nbsp;to&nbsp;take&nbsp;the&nbsp;action&nbsp;at<br>
+&nbsp;&nbsp;&nbsp;&nbsp;update&nbsp;(bool):&nbsp;whether&nbsp;to&nbsp;update&nbsp;the&nbsp;environment<br>
+&nbsp;<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Tuple[Dict[str,&nbsp;torch.tensor],&nbsp;float,&nbsp;bool]:&nbsp;the&nbsp;new&nbsp;state,&nbsp;the&nbsp;reward,&nbsp;and&nbsp;whether&nbsp;the&nbsp;episode&nbsp;is&nbsp;done</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-action_dimension"><strong>action_dimension</strong></a>(self) -&gt; torch.Size</dt><dd><tt>the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;action&nbsp;the&nbsp;agent&nbsp;can&nbsp;take<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;torch.Size:&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;action&nbsp;the&nbsp;agent&nbsp;can&nbsp;take</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-get_asset_num"><strong>get_asset_num</strong></a>(self) -&gt; int</dt></dl>
+
+<dl><dt><a name="BaseEnv-get_state"><strong>get_state</strong></a>(self) -&gt; Dict[str, &lt;built-in method tensor of type object at 0x7f4cbe871840&gt;]</dt><dd><tt>get&nbsp;the&nbsp;state&nbsp;tensors&nbsp;at&nbsp;a&nbsp;given&nbsp;time<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Dict[str,&nbsp;torch.tensor]:&nbsp;the&nbsp;state&nbsp;tensors</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-initialize_weight"><strong>initialize_weight</strong></a>(self) -&gt; None</dt></dl>
+
+<dl><dt><a name="BaseEnv-reset"><strong>reset</strong></a>(self) -&gt; None</dt><dd><tt>reset&nbsp;the&nbsp;environment</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-state_dimension"><strong>state_dimension</strong></a>(self) -&gt; Dict[str, torch.Size]</dt><dd><tt>the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;state&nbsp;tensors<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Dict[str,&nbsp;torch.Size]:&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;state&nbsp;tensors</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-state_tensor_names"><strong>state_tensor_names</strong></a>(self) -&gt; List[str]</dt><dd><tt>the&nbsp;names&nbsp;of&nbsp;the&nbsp;state&nbsp;tensors<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;List[str]:&nbsp;the&nbsp;names&nbsp;of&nbsp;the&nbsp;state&nbsp;tensors</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-test_time_range"><strong>test_time_range</strong></a>(self) -&gt; range</dt><dd><tt>the&nbsp;range&nbsp;of&nbsp;time&nbsp;indices<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;range:&nbsp;the&nbsp;range&nbsp;of&nbsp;time&nbsp;indices</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-to"><strong>to</strong></a>(self, device: str) -&gt; None</dt><dd><tt>move&nbsp;the&nbsp;environment&nbsp;to&nbsp;the&nbsp;given&nbsp;device<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;device&nbsp;(torch.device):&nbsp;the&nbsp;device&nbsp;to&nbsp;move&nbsp;to</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-train_time_range"><strong>train_time_range</strong></a>(self) -&gt; range</dt><dd><tt>the&nbsp;range&nbsp;of&nbsp;time&nbsp;indices<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;range:&nbsp;the&nbsp;range&nbsp;of&nbsp;time&nbsp;indices</tt></dd></dl>
+
+<dl><dt><a name="BaseEnv-update"><strong>update</strong></a>(self, trading_size: torch.Tensor) -&gt; None</dt><dd><tt>update&nbsp;the&nbsp;environment&nbsp;with&nbsp;the&nbsp;given&nbsp;action<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;(torch.tensor):&nbsp;the&nbsp;action&nbsp;to&nbsp;take</tt></dd></dl>
+
+<hr>
+Static methods defined here:<br>
+<dl><dt><a name="BaseEnv-add_args"><strong>add_args</strong></a>(parser: argparse.ArgumentParser) -&gt; None</dt><dd><tt>add&nbsp;arguments&nbsp;to&nbsp;the&nbsp;parser<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;parser&nbsp;(argparse.ArgumentParser):&nbsp;the&nbsp;parser&nbsp;to&nbsp;add&nbsp;arguments&nbsp;to</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>Dict</strong> = typing.Dict<br>
+<strong>List</strong> = typing.List<br>
+<strong>Optional</strong> = typing.Optional<br>
+<strong>Tuple</strong> = typing.Tuple<br>
+<strong>logger</strong> = &lt;Logger BaseEnv (WARNING)&gt;</td></tr></table>
+</body></html>
