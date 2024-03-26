@@ -301,8 +301,6 @@ def main() -> None:
         agent = registered_agents[args.agent](args, env, args.device, True)
         agent.test()
 
-    exit(-1)
-
 
 if __name__ == "__main__":
     main()
