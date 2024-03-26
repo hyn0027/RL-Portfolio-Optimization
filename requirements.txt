@@ -2,3 +2,4 @@ torch>=2.2.1
 pandas>=2.2.0
 yfinance>=0.2.37
 tqdm >= 4.66.2
+sphinx==5.0.2
