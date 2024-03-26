@@ -16,6 +16,21 @@ logger = get_logger("BaseAgent")
 class BaseAgent(Generic[BaseEnv]):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
+        """add arguments to the parser
+
+            to add arguments to the parser, modify the method as follows:
+
+            .. code-block:: python
+
+                @staticmethod
+                def add_args(parser: argparse.ArgumentParser) -> None:
+
+
+            then add arguments to the parser
+
+        Args:
+            parser (argparse.ArgumentParser): the parser to add arguments to
+        """
         parser.add_argument(
             "--model_load_path",
             type=str,

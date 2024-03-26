@@ -1,9 +1,5 @@
 #!/bin/bash
 
-rm -rf docs
-mkdir -p docs
+cd docs
 
-python -m pydoc -w ./
-
-mv *.html docs/
-
+make html
