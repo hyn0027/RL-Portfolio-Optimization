@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sphinx-apidoc -f -o docs/source src
+sphinx-apidoc -M -f -o docs/source src
 
 cd docs
 

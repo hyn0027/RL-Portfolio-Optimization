@@ -19,6 +19,15 @@ logger = get_logger("DQN")
 
 @register_agent("DQN")
 class DQN(BaseAgent[BaseEnv]):
+    """The DQN class is a subclass of BaseAgent and implements the DQN algorithm.
+
+    Args:
+        BaseAgent (TypeVar): the type of the environment
+
+    Raises:
+        ValueError: missing model_load_path for testing
+    """
+
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DQN, DQN).add_args(parser)
@@ -60,6 +69,14 @@ class DQN(BaseAgent[BaseEnv]):
         device: Optional[str] = None,
         test_mode: bool = False,
     ) -> None:
+        """the constructor for the DQN agent
+
+        Args:
+            args (argparse.Namespace): arguments
+            env (BaseEnv): the trading environment
+            device (Optional[str], optional): torch device. Defaults to None, which means the device is automatically selected.
+            test_mode (bool, optional): test or train mode. Defaults to False.
+        """
         logger.info("Initializing DQN")
 
         super().__init__(args, env, device, test_mode)
@@ -100,8 +117,10 @@ class DQN(BaseAgent[BaseEnv]):
         logger.info("DQN initialized")
 
     def train(self) -> None:
+        """train the DQN agent"""
         pass
 
     def update_target_network(self) -> None:
+        """update the target network with the Q network weights"""
         self.target_Q_network.load_state_dict(self.Q_network.state_dict())
         logger.info("Target network updated")

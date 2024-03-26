@@ -8,6 +8,8 @@ logger = get_logger("BaseEnv")
 
 
 class BaseEnv:
+    """the base environment class, should be overridden by specific environments"""
+
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         """add arguments to the parser

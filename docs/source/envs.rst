@@ -1,6 +1,11 @@
 envs package
 ============
 
+.. automodule:: envs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -24,14 +29,6 @@ envs.DiscreteRealDataEnv1 module
 --------------------------------
 
 .. automodule:: envs.DiscreteRealDataEnv1
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: envs
    :members:
    :undoc-members:
    :show-inheritance:

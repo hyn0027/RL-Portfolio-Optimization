@@ -16,7 +16,7 @@ jobs:
           pip install -r requirements.txt
       - name: Sphinx autodoc
         run: |
-          cd docs && sphinx-apidoc -f -o ./source ../src && cd ../
+          sphinx-apidoc -M -f -o docs/source src
       - name: Sphinx build
         run: |
           cd docs && make html && cd ../

@@ -6,5 +6,7 @@ src
 
    agents
    envs
+   evaluate
    networks
    run
+   utils

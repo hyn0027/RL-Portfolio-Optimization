@@ -18,6 +18,8 @@ def register_agent(agent_name: str) -> Callable[[_T], _T]:
         .. code-block:: python
 
             @register_agent("agent_name")
+            YourAgentClass(BaseAgent):
+                ...
 
     Args:
         agent_name (str): the name of the registered agent

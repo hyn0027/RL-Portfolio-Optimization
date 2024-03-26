@@ -1,6 +1,11 @@
 agents package
 ==============
 
+.. automodule:: agents
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -24,14 +29,6 @@ agents.MultiDQN module
 ----------------------
 
 .. automodule:: agents.MultiDQN
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: agents
    :members:
    :undoc-members:
    :show-inheritance:

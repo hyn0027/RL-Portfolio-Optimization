@@ -1,7 +1,7 @@
-networks package
+evaluate package
 ================
 
-.. automodule:: networks
+.. automodule:: evaluate
    :members:
    :undoc-members:
    :show-inheritance:
@@ -9,10 +9,10 @@ networks package
 Submodules
 ----------
 
-networks.MultiDQN\_LSTM module
-------------------------------
+evaluate.evaluator module
+-------------------------
 
-.. automodule:: networks.MultiDQN_LSTM
+.. automodule:: evaluate.evaluator
    :members:
    :undoc-members:
    :show-inheritance:

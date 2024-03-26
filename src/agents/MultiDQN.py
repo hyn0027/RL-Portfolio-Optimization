@@ -20,9 +20,14 @@ logger = get_logger("MultiDQN")
 @register_agent("MultiDQN")
 class MultiDQN(DQN[DiscreteRealDataEnv1]):
     """
+    The MultiDQN class is a subclass of DQN and implements the MultiDQN algorithm.
+    It outputs the Q value of all possible actions simultaneously.
+    It takes environment DiscreteRealDataEnv1 as it's own env.
+
     references:
-        https://arxiv.org/abs/1907.03665
-        https://github.com/Jogima-cyber/portfolio-manager
+        original paper: https://arxiv.org/abs/1907.03665
+
+        reference implementation: https://github.com/Jogima-cyber/portfolio-manager
     """
 
     @staticmethod
@@ -54,6 +59,15 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         device: Optional[str] = None,
         test_mode: bool = False,
     ) -> None:
+        """the constructor for the MultiDQN agent
+
+        Args:
+            args (argparse.Namespace): arguments
+            env (BaseEnv): the trading environment
+            device (Optional[str], optional): torch device. Defaults to None, which means the device is automatically selected.
+            test_mode (bool, optional): test or train mode. Defaults to False.
+        """
+
         logger.info("Initializing MultiDQN")
 
         super().__init__(args, env, device, test_mode)
@@ -73,10 +87,15 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         logger.info("MultiDQN initialized")
 
     def train(self) -> None:
+        """the train for multiDQN is composed of two steps:
+        1. pretrain the Q network
+        2. train the Q network using multiDQN
+        """
         self.pretrain()
         self.multiDQN_train()
 
     def pretrain(self) -> None:
+        """the pretraining step of the multiDQN algorithm"""
         criterion = nn.MSELoss()
         optimizer = optim.Adam(
             self.Q_network.parameters(), lr=self.pretrain_learning_rate
@@ -157,6 +176,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         logger.info(f"Best model loaded from {save_path}")
 
     def multiDQN_train(self) -> None:
+        """the training step of the multiDQN algorithm"""
         self.Q_network.train()
         self.target_Q_network.eval()
         self.replay.reset()
@@ -206,7 +226,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                         )
                 new_state, reward, done = self.env.act(action_index)
                 self.env.update(action_index)
-                self.update_Q_network()
+                self._update_Q_network()
                 self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
                 progress_bar.update(1)
             progress_bar.close()
@@ -222,7 +242,13 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             )
             logger.info(f"Model saved to {save_path}")
 
-    def update_Q_network(self) -> float:
+    def _update_Q_network(self) -> float:
+        """random sample multiple experience lists
+        from replay buffer and update Q network
+
+        Returns:
+            float: the training loss
+        """
         if not self.replay.has_enough_samples():
             return float("nan")
         K = self.replay.sample()
@@ -252,6 +278,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         return loss.item()
 
     def test(self) -> None:
+        """test the MultiDQN agent"""
         self.Q_network.eval()
         self.env.set_episode_for_testing()
         self.env.reset()

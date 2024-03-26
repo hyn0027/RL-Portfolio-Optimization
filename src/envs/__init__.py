@@ -8,6 +8,25 @@ T = TypeVar("T")
 
 
 def register_env(environment_name: str) -> Callable[[T], T]:
+    """the decorator to register an environment
+
+        to add a new class as a registered environment,
+        ensure the class is a derivative type of envs.BaseEnv,
+        add the following code to the top of the file:
+
+        .. code-block:: python
+
+            @register_env("env_name")
+            YourEnvClass(BaseEnv):
+                ...
+
+    Args:
+        environment_name (str): the name of the registered environment
+
+    Returns:
+        Callable[[_T], _T]: the decorator to register the environment
+    """
+
     def decorator(environment_cls: T) -> T:
         registered_envs[environment_name] = environment_cls
         return environment_cls

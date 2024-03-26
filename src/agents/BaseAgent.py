@@ -14,6 +14,15 @@ logger = get_logger("BaseAgent")
 
 
 class BaseAgent(Generic[BaseEnv]):
+    """the base class for all agents
+
+    Args:
+        Generic (TypeVar): the base type of the environment
+
+    Raises:
+        NotImplementedError: train method not implemented
+    """
+
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         """add arguments to the parser
@@ -24,6 +33,9 @@ class BaseAgent(Generic[BaseEnv]):
 
                 @staticmethod
                 def add_args(parser: argparse.ArgumentParser) -> None:
+                    parser.add_argument(
+                        ...
+                    )
 
 
             then add arguments to the parser
@@ -66,6 +78,14 @@ class BaseAgent(Generic[BaseEnv]):
         device: Optional[str] = None,
         test_mode: bool = False,
     ) -> None:
+        """the constructor for the BaseAgent
+
+        Args:
+            args (argparse.Namespace): arguments
+            env (BaseEnv): the trading environment
+            device (Optional[str], optional): torch device. Defaults to None, which means the device is automatically selected.
+            test_mode (bool, optional): test or train mode. Defaults to False.
+        """
         logger.info("Initializing BaseAgent")
         torch.set_num_threads(args.num_threads)
         self.env = env
@@ -94,4 +114,9 @@ class BaseAgent(Generic[BaseEnv]):
         logger.info("BaseAgent initialized")
 
     def train(self) -> None:
+        """train the agent. Must be implemented by the subclass
+
+        Raises:
+            NotImplementedError: train method not implemented
+        """
         raise NotImplementedError("train method not implemented")
