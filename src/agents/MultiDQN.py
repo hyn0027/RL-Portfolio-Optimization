@@ -91,10 +91,10 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         1. pretrain the Q network
         2. train the Q network using multiDQN
         """
-        self.pretrain()
-        self.multiDQN_train()
+        self._pretrain()
+        self._multiDQN_train()
 
-    def pretrain(self) -> None:
+    def _pretrain(self) -> None:
         """the pretraining step of the multiDQN algorithm"""
         criterion = nn.MSELoss()
         optimizer = optim.Adam(
@@ -175,7 +175,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         )
         logger.info(f"Best model loaded from {save_path}")
 
-    def multiDQN_train(self) -> None:
+    def _multiDQN_train(self) -> None:
         """the training step of the multiDQN algorithm"""
         self.Q_network.train()
         self.target_Q_network.eval()
@@ -230,7 +230,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                 self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
                 progress_bar.update(1)
             progress_bar.close()
-            self.update_target_network()
+            self._update_target_network()
             logger.info(
                 f"Finish epoch {epoch+1}/{self.train_epochs}, epsilon: {self.epsilon:.5f}, portfolio value: {self.env.portfolio_value:.5f}"
             )

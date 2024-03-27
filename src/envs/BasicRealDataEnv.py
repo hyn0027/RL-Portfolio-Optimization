@@ -50,6 +50,16 @@ class BasicRealDataEnv(BaseEnv):
 
         logger.info("BasicRealDataEnv initialized")
 
+    def to(self, device: str) -> None:
+        """move the environment to the given device
+
+        Args:
+            device (torch.device): the device to move to
+        """
+        self.device = device
+        self.price_matrix = self.price_matrix.to(device)
+        self.price_change_matrix = self.price_change_matrix.to(device)
+
     def get_asset_num(self) -> int:
         """get the number of assets, excluding risk-free asset
 

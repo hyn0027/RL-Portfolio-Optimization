@@ -120,7 +120,7 @@ class DQN(BaseAgent[BaseEnv]):
         """train the DQN agent"""
         pass
 
-    def update_target_network(self) -> None:
+    def _update_target_network(self) -> None:
         """update the target network with the Q network weights"""
         self.target_Q_network.load_state_dict(self.Q_network.state_dict())
         logger.info("Target network updated")
