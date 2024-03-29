@@ -1,6 +1,6 @@
 import argparse
 
-
+from typing import Dict
 from utils.logging import get_logger
 from networks import register_network
 
@@ -91,19 +91,18 @@ class MultiDQN_LSTM(nn.Module):
         self.asset_num = len(args.asset_codes)
         self.DNN = DNN(args)
 
-    def forward(
-        self, Xt: torch.Tensor, wt: torch.Tensor, pretrain: bool
-    ) -> torch.Tensor:
+    def forward(self, state: Dict[str, torch.Tensor], pretrain: bool) -> torch.Tensor:
         """the overridden forward method
 
         Args:
-            Xt (torch.Tensor): the state tensor Xt
-            wt (torch.Tensor): the weight tensor wt
+            state (Dict[str, torch.Tensor]): the state dictionary, including "Xt_Matrix" and "Portfolio_Weight"
             pretrain (bool): is this a pretrain step or not
 
         Returns:
             torch.Tensor: the output tensor
         """
+        Xt = state["Xt_Matrix"]
+        wt = state["Portfolio_Weight"]
         hn = self.encoder(Xt)
         # hn has size [asset_num, LSTM_output_size]
         if pretrain:
