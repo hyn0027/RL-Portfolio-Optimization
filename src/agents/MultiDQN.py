@@ -91,10 +91,11 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         1. pretrain the Q network
         2. train the Q network using multiDQN
         """
-        self.pretrain()
-        self.multiDQN_train()
+        if self.pretrain_epochs > 0:
+            self._pretrain()
+        self._multiDQN_train()
 
-    def pretrain(self) -> None:
+    def _pretrain(self) -> None:
         """the pretraining step of the multiDQN algorithm"""
         criterion = nn.MSELoss()
         optimizer = optim.Adam(
@@ -113,13 +114,11 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             total_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
             logger.info("Training")
             for time_index in tqdm(self.env.pretrain_train_time_range(shuffle=True)):
-                data = self.env.get_Xt_state_and_pretrain_target(time_index)
+                data = self.env.get_pretrain_input_and_target(time_index)
                 if data is None:
                     continue
-                Xt_state, pretrain_target = data
-                out = self.Q_network(
-                    Xt_state, torch.empty(0, dtype=self.dtype, device=self.device), True
-                )
+                input, pretrain_target = data
+                out = self.Q_network(input, True)
                 loss = criterion(out, pretrain_target.permute(1, 0))
                 running_loss += loss
                 total_loss += loss
@@ -141,13 +140,11 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             batch_cnt = 0
             logger.info("Evaluating")
             for time_index in tqdm(self.env.pretrain_eval_time_range()):
-                data = self.env.get_Xt_state_and_pretrain_target(time_index)
+                data = self.env.get_pretrain_input_and_target(time_index)
                 if data is None:
                     continue
-                Xt_state, pretrain_target = data
-                out = self.Q_network(
-                    Xt_state, torch.empty(0, dtype=self.dtype, device=self.device), True
-                )
+                input, pretrain_target = data
+                out = self.Q_network(input, True)
                 loss = criterion(out, pretrain_target.permute(1, 0))
                 total_loss += loss
                 batch_cnt += 1
@@ -175,7 +172,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         )
         logger.info(f"Best model loaded from {save_path}")
 
-    def multiDQN_train(self) -> None:
+    def _multiDQN_train(self) -> None:
         """the training step of the multiDQN algorithm"""
         self.Q_network.train()
         self.target_Q_network.eval()
@@ -197,9 +194,6 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                         ].item()
                     )
                 else:
-                    Xt = state["Xt_Matrix"]
-                    wt = state["Portfolio_Weight"]
-
                     experience_list = []
                     for possible_action_index in self.env.possible_action_indexes():
                         new_state, reward, done = self.env.act(possible_action_index)
@@ -219,7 +213,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                             ].item()
                         )
                     else:
-                        action_q_value = self.Q_network(Xt, wt, False)
+                        action_q_value = self.Q_network(state, False)
                         action_index = int(torch.argmax(action_q_value).item())
                         action_index = self.env.action_mapping(
                             action_index, action_q_value
@@ -230,7 +224,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                 self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
                 progress_bar.update(1)
             progress_bar.close()
-            self.update_target_network()
+            self._update_target_network()
             logger.info(
                 f"Finish epoch {epoch+1}/{self.train_epochs}, epsilon: {self.epsilon:.5f}, portfolio value: {self.env.portfolio_value:.5f}"
             )
@@ -255,12 +249,8 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         for L in K:
             for state, action_index, reward, new_state in L:
-                Xt = state["Xt_Matrix"]
-                wt = state["Portfolio_Weight"]
-                new_Xt = new_state["Xt_Matrix"]
-                new_wt = new_state["Portfolio_Weight"]
                 with torch.no_grad():
-                    target_q_values = self.target_Q_network(new_Xt, new_wt, False)
+                    target_q_values = self.target_Q_network(new_state, False)
                     best_action_index = int(torch.argmax(target_q_values).item())
                     best_action_index = self.env.action_mapping(
                         best_action_index, target_q_values
@@ -268,7 +258,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                     target_q_value = (
                         reward + self.gamma * target_q_values[best_action_index]
                     )
-                q_value = self.Q_network(Xt, wt, False)[action_index]
+                q_value = self.Q_network(state, False)[action_index]
                 loss += ((q_value - target_q_value) ** 2) * self.loss_scale
         if loss < self.loss_min:
             self.loss_scale *= 2
@@ -294,9 +284,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                     ].item()
                 )
             else:
-                Xt = state["Xt_Matrix"]
-                wt = state["Portfolio_Weight"]
-                action_q_value = self.Q_network(Xt, wt, False)
+                action_q_value = self.Q_network(state, False)
                 action_index = int(torch.argmax(action_q_value).item())
                 action_index = self.env.action_mapping(action_index, action_q_value)
             new_state, _, _ = self.env.act(action_index)

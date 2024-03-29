@@ -273,21 +273,24 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             time_index = self.time_index
         return self.Xt_matrix[:, :, time_index - self.window_size : time_index]
 
-    def get_Xt_state_and_pretrain_target(
+    def get_pretrain_input_and_target(
         self, time_index: int
-    ) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
+    ) -> Optional[Tuple[Dict[str, torch.Tensor], torch.Tensor]]:
         """get the Xt state tensor and the pretrain target at a given time
 
         Args:
             time_index (int): the time index
 
         Returns:
-            Optional[Tuple[torch.Tensor, torch.Tensor]]:
-                the Xt state tensor and the pretrain target; if the time index is invalid, return None
+            Optional[Tuple[Dict[str, torch.Tensor], torch.Tensor]]:
+                the input state and the pretrain target
         """
         if time_index < self.window_size:
             return None
-        return self._get_Xt_state(time_index), self.Xt_matrix[:, :, time_index]
+        return {
+            "Xt_Matrix": self._get_Xt_state(time_index),
+            "Portfolio_Weight": torch.empty(0, device=self.device),
+        }, self.Xt_matrix[:, :, time_index]
 
     def act(
         self, action: int

@@ -50,6 +50,16 @@ class BasicRealDataEnv(BaseEnv):
 
         logger.info("BasicRealDataEnv initialized")
 
+    def to(self, device: str) -> None:
+        """move the environment to the given device
+
+        Args:
+            device (torch.device): the device to move to
+        """
+        self.device = device
+        self.price_matrix = self.price_matrix.to(device)
+        self.price_change_matrix = self.price_change_matrix.to(device)
+
     def get_asset_num(self) -> int:
         """get the number of assets, excluding risk-free asset
 
@@ -90,3 +100,18 @@ class BasicRealDataEnv(BaseEnv):
         if time_index is None:
             time_index = self.time_index
         return self.price_change_matrix[:, time_index - 1]
+
+    def _get_price(self, time_index: Optional[int] = None) -> torch.tensor:
+        """get the price tensor at a given time
+
+        Args:
+            time_index (Optional[int], optional):
+                the time index to get the price.
+                Defaults to None, which means to get the price at the current time.
+
+        Returns:
+            torch.tensor: the price tensor
+        """
+        if time_index is None:
+            time_index = self.time_index
+        return self.price_matrix[:, time_index]
