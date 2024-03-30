@@ -1,10 +1,12 @@
 import argparse
-from typing import List, Optional, Tuple
-import torch
+from typing import List, Optional, Dict, Tuple
+from itertools import product
 
 from utils.data import Data
 from utils.logging import get_logger
 from envs.BaseEnv import BaseEnv
+
+import torch
 
 logger = get_logger("BasicRealDataEnv")
 
@@ -13,6 +15,12 @@ class BasicRealDataEnv(BaseEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(BasicRealDataEnv, BasicRealDataEnv).add_args(parser)
+        parser.add_argument(
+            "--trading_size",
+            type=float,
+            default=1e4,
+            help="the size of each trading in terms of currency",
+        )
 
     def __init__(
         self,
@@ -34,6 +42,10 @@ class BasicRealDataEnv(BaseEnv):
         self.time_zone: str = args.time_zone
         self.asset_num = len(self.asset_codes)
 
+        self.trading_size = torch.tensor(
+            args.trading_size, dtype=self.dtype, device=self.device
+        )
+
         price_list = []
         for time_index in range(0, self.data.time_dimension()):
             new_price = []
@@ -48,6 +60,13 @@ class BasicRealDataEnv(BaseEnv):
         self.price_matrix = torch.stack(price_list, dim=1)
         self.price_change_matrix = self.price_matrix[:, 1:] / self.price_matrix[:, :-1]
 
+        self.all_actions = []
+        action_number = range(-1, 2)  # -1, 0, 1
+        for action in product(action_number, repeat=len(self.asset_codes)):
+            self.all_actions.append(
+                torch.tensor(action, dtype=torch.int8, device=self.device)
+            )
+
         logger.info("BasicRealDataEnv initialized")
 
     def to(self, device: str) -> None:
@@ -56,9 +75,11 @@ class BasicRealDataEnv(BaseEnv):
         Args:
             device (torch.device): the device to move to
         """
-        self.device = device
-        self.price_matrix = self.price_matrix.to(device)
-        self.price_change_matrix = self.price_change_matrix.to(device)
+        super().to(device)
+        self.trading_size = self.trading_size.to(self.device)
+        self.price_matrix = self.price_matrix.to(self.device)
+        self.price_change_matrix = self.price_change_matrix.to(self.device)
+        self.all_actions = [a.to(self.device) for a in self.all_actions]
 
     def get_asset_num(self) -> int:
         """get the number of assets, excluding risk-free asset
@@ -74,7 +95,7 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             range: the range of time indices
         """
-        return range(0, self.data.time_dimension())
+        return range(0, self.data.time_dimension() - 1)
 
     def test_time_range(self) -> range:
         """the range of time indices
@@ -101,7 +122,7 @@ class BasicRealDataEnv(BaseEnv):
             time_index = self.time_index
         return self.price_change_matrix[:, time_index - 1]
 
-    def _get_price(self, time_index: Optional[int] = None) -> torch.tensor:
+    def _get_price_tensor(self, time_index: Optional[int] = None) -> torch.tensor:
         """get the price tensor at a given time
 
         Args:
@@ -115,3 +136,117 @@ class BasicRealDataEnv(BaseEnv):
         if time_index is None:
             time_index = self.time_index
         return self.price_matrix[:, time_index]
+
+    def _get_price_tensor_in_window(self, time_index: int) -> torch.tensor:
+        """get the price tensor in a window centered at a given time
+
+        Args:
+            time_index (int): the time index to get the price
+            window_size (int): the window size
+
+        Returns:
+            torch.tensor: the price tensor in the window
+        """
+        return self.price_matrix[: time_index - self.window_size + 1, time_index + 1]
+
+    def state_dimension(self) -> Dict[str, torch.Size]:
+        """the dimension of the state tensors.
+
+        Returns:
+            Dict[str, torch.Size]: the dimension of the state tensors
+        """
+        return {
+            "price": torch.Size([self.asset_num, self.window_size]),
+        }
+
+    def state_tensor_names(self) -> List[str]:
+        """the names of the state tensors
+
+        Returns:
+            List[str]: the names of the state tensors
+        """
+        return ["price"]
+
+    def action_dimension(self) -> torch.Size:
+        """the dimension of the action the agent can take
+
+        Returns:
+            torch.Size: the dimension of the action the agent can take
+        """
+        return torch.Size([len(self.asset_codes)])
+
+    def get_state(
+        self,
+    ) -> Optional[Dict[str, torch.Tensor]]:
+        """get the state tensors at the current time.
+
+        Returns:
+            Dict[str, torch.tensor]: the state tensors
+        """
+        if self.time_index < self.window_size - 1:
+            raise None
+        return {
+            "price": self._get_price_tensor_in_window(self.time_index),
+        }
+
+    def find_action_index(self, action: torch.Tensor) -> int:
+        """given an action, find the index of the action in all_actions
+
+        Args:
+            action (torch.Tensor): the trading decision of each asset
+
+        Returns:
+            int: the index of the action in all_actions, -1 if not found
+        """
+        for i, a in enumerate(self.all_actions):
+            if torch.equal(a, action):
+                return i
+        return -1
+
+    def act(
+        self, action: torch.tensor
+    ) -> Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
+        """update the environment with the given action at the given time
+
+        Args:
+            action (torch.tensor): the action to take
+
+        Returns:
+            Tuple[Dict[str, torch.tensor], float, bool]: the new state, the reward, and whether the episode is done
+        """
+        if self.find_action_index(action) == -1:
+            raise ValueError(f"Invalid action: {action}")
+        action = action * self.trading_size
+        (
+            new_portfolio_weight,
+            new_portfolio_weight_next_day,
+            new_rf_weight,
+            new_portfolio_value,
+            static_portfolio_value,
+        ) = self._get_new_portfolio_weight_and_value(action)
+
+        reward = new_portfolio_value - self.portfolio_value
+
+        done = self.time_index == self.data.time_dimension() - 2
+
+        new_state = {
+            "price": (
+                self._get_price_tensor_in_window(self.time_index + 1)
+                if self.time_index + 2 >= self.window_size
+                else None
+            ),
+        }
+
+        return new_state, reward, done
+
+    def reset(self) -> None:
+        """reset the environment."""
+        logger.info("Resetting BasicRealDataEnv")
+        self.time_index = 0
+        super().initialize_weight()
+
+    def update(self, action: torch.Tensor) -> None:
+        if self.find_action_index(action) == -1:
+            raise ValueError(f"Invalid action: {action}")
+        action = action * self.trading_size
+        super().update(action)

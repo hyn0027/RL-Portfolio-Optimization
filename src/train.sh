@@ -19,6 +19,23 @@ python3 run.py \
     --initial_balance 100000
 
 python3 run.py \
+    --agent DQN \
+    --env BasicRealDataEnv \
+    --network MultiDQN_LSTM \
+    --asset_codes NVDA MSFT \
+    --start_date 2020-01-01 \
+    --end_date 2023-01-01 \
+    --interval 1d \
+    --annual_sample 252 \
+    --device cpu \
+    --train_batch_size 4 \
+    --train_epochs 1 \
+    --episode_length 252 \
+    --window_size 4 \
+    --mode train \
+    --initial_balance 100000
+
+python3 run.py \
     --agent MultiDQN \
     --initial_balance 100000 \
     --env DiscreteRealDataEnv1 \

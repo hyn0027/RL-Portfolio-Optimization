@@ -1,7 +1,6 @@
 import argparse
 from typing import Dict, Optional, Tuple, List
 import copy
-from itertools import product
 from utils.logging import get_logger
 import torch
 import random
@@ -19,12 +18,6 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DiscreteRealDataEnv1, DiscreteRealDataEnv1).add_args(parser)
-        parser.add_argument(
-            "--trading_size",
-            type=float,
-            default=1e4,
-            help="the size of each trading in terms of currency",
-        )
         parser.add_argument(
             "--episode_length",
             type=int,
@@ -85,12 +78,6 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             self.accumulated_prob, dtype=self.dtype, device=self.device
         )
 
-        self.trading_size = torch.tensor(
-            args.trading_size, dtype=self.dtype, device=self.device
-        )
-
-        self.initialize_weight()
-
         # compute all Kx in advance
         kc_list, ko_list, kh_list, kl_list, kv_list = [], [], [], [], []
         for time_index in range(1, self.data.time_dimension()):
@@ -136,23 +123,13 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         )
         self.Xt_matrix[torch.isnan(self.Xt_matrix)] = 0
 
-        # compute all actions
-        self.all_actions = []
-        action_number = range(-1, 2)  # -1, 0, 1
-        for action in product(action_number, repeat=len(self.asset_codes)):
-            self.all_actions.append(
-                torch.tensor(action, dtype=torch.int8, device=self.device)
-            )
-
         logger.info("DiscreteRealDataEnv1 initialized")
 
     def to(self, device: str) -> None:
         super().to(device)
         self.accumulated_prob = self.accumulated_prob.to(self.device)
-        self.trading_size = self.trading_size.to(self.device)
         self.Xt_matrix = self.Xt_matrix.to(self.device)
         self.price_change_matrix = self.price_change_matrix.to(self.device)
-        self.all_actions = [a.to(self.device) for a in self.all_actions]
 
     def sample_distribution_and_set_episode(self) -> int:
         """sample a distribution and set the episode accordingly
@@ -237,12 +214,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         ]
 
     def action_dimension(self) -> torch.Size:
-        """the dimension of the action the agent can take
-
-        Returns:
-            torch.Size: the dimension of the action the agent can take
-        """
-        return torch.Size([len(self.asset_codes)])
+        return super().action_dimension()
 
     def get_state(self) -> Optional[Dict[str, torch.Tensor]]:
         """get the state tensors at the current time, including Xt_Matrix and Portfolio_Weight
@@ -416,20 +388,6 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             bool: whether the action is valid
         """
         return not self._cash_shortage(action) and not self._asset_shortage(action)
-
-    def find_action_index(self, action: torch.Tensor) -> int:
-        """given an action, find the index of the action in all_actions
-
-        Args:
-            action (torch.Tensor): the trading decision of each asset
-
-        Returns:
-            int: the index of the action in all_actions, -1 if not found
-        """
-        for i, a in enumerate(self.all_actions):
-            if torch.equal(a, action):
-                return i
-        return -1
 
     def possible_action_indexes(self) -> torch.Tensor:
         """get all possible action indexes

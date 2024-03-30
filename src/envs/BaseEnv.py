@@ -88,6 +88,9 @@ class BaseEnv:
         self.transaction_cost_base = torch.tensor(
             args.transaction_cost_base, dtype=self.dtype, device=self.device
         )
+        
+        self.initialize_weight()
+        
         logger.info("BaseEnv Initialized")
 
     def initialize_weight(self) -> None:
@@ -193,7 +196,9 @@ class BaseEnv:
         """
         raise NotImplementedError("get_state not implemented")
 
-    def act(self, action: torch.tensor) -> Tuple[Dict[str, torch.tensor], float, bool]:
+    def act(
+        self, action: torch.tensor
+    ) -> Tuple[Dict[str, torch.tensor], torch.Tensor, bool]:
         """update the environment with the given action at the given time, should be overridden by specific environments
 
         Args:
@@ -203,7 +208,7 @@ class BaseEnv:
             NotImplementedError: act not implemented
 
         Returns:
-            Tuple[Dict[str, torch.tensor], float, bool]: the new state, the reward, and whether the episode is done
+            Tuple[Dict[str, torch.tensor], torch.Tensor, bool]: the new state, the reward, and whether the episode is done
         """
         raise NotImplementedError("act not implemented")
 
