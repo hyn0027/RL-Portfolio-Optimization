@@ -4,15 +4,15 @@ python3 run.py \
     --agent MultiDQN \
     --env DiscreteRealDataEnv1 \
     --network MultiDQN_LSTM \
-    --asset_codes NVDA MSFT GOOGL \
+    --asset_codes NVDA \
     --start_date 2020-01-01 \
     --end_date 2023-01-01 \
     --interval 1d \
     --annual_sample 252 \
     --device cpu \
-    --pretrain_epochs 1 \
+    --pretrain_epochs 5 \
     --train_batch_size 4 \
-    --train_epochs 8 \
+    --train_epochs 10 \
     --train_learning_rate 0.01 \
     --episode_length 250 \
     --window_size 4 \
@@ -41,7 +41,7 @@ python3 run.py \
     --initial_balance 1000000 \
     --env DiscreteRealDataEnv1 \
     --network MultiDQN_LSTM \
-    --asset_codes NVDA MSFT GOOGL \
+    --asset_codes NVDA \
     --start_date 2023-01-01 \
     --end_date 2024-01-01 \
     --interval 1d \

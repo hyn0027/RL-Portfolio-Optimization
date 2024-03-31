@@ -313,6 +313,9 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
                 new_portfolio_weight_next_day, new_rf_weight
             ),
             "Portfolio_Weight_Today": new_portfolio_weight,
+            "Portfolio_Weight_Without_rf": new_portfolio_weight_next_day,
+            "rf_Weight": new_rf_weight,
+            "Portfolio_Value": new_portfolio_value,
         }
 
         return new_state, reward, done
@@ -357,38 +360,67 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         self.time_index = self.start_time_index
         BaseEnv.initialize_weight(self)
 
-    def _cash_shortage(self, action: torch.Tensor) -> bool:
+    def _cash_shortage(
+        self,
+        action: torch.Tensor,
+        portfolio_value: Optional[torch.Tensor] = None,
+        rf_weight: Optional[torch.Tensor] = None,
+    ) -> bool:
         """assert whether there is cash shortage after trading
 
         Args:
             action (torch.Tensor): the trading decision of each asset
+            portfolio_value (Optional[torch.Tensor], optional): the portfolio value. Defaults to None.
+            rf_weight (Optional[torch.Tensor], optional): the risk free weight. Defaults to None.
 
         Returns:
             bool: whether there is cash shortage after trading
         """
-        return BaseEnv._cash_shortage(self, action * self.trading_size)
+        return BaseEnv._cash_shortage(
+            self, action * self.trading_size, portfolio_value, rf_weight
+        )
 
-    def _asset_shortage(self, action: torch.Tensor) -> bool:
+    def _asset_shortage(
+        self,
+        action: torch.Tensor,
+        portfolio_weight: Optional[torch.Tensor] = None,
+        portfolio_value: Optional[torch.Tensor] = None,
+    ) -> bool:
         """assert whether there is asset shortage after trading
 
         Args:
             action (torch.Tensor): the trading decision of each asset
+            portfolio_weight (Optional[torch.Tensor], optional): the portfolio weight. Defaults to None.
+            portfolio_value (Optional[torch.Tensor], optional): the portfolio value. Defaults to None.
 
         Returns:
             bool: whether there is asset shortage after trading
         """
-        return BaseEnv._asset_shortage(self, action * self.trading_size)
+        return BaseEnv._asset_shortage(
+            self, action * self.trading_size, portfolio_weight, portfolio_value
+        )
 
-    def _action_validity(self, action: torch.Tensor) -> bool:
+    def _action_validity(
+        self,
+        action: torch.Tensor,
+        portfolio_weight: Optional[torch.Tensor] = None,
+        portfolio_value: Optional[torch.Tensor] = None,
+        rf_weight: Optional[torch.Tensor] = None,
+    ) -> bool:
         """assert whether the action is valid
 
         Args:
             action (torch.Tensor): the trading decision of each asset
+            portfolio_weight (Optional[torch.Tensor], optional): the portfolio weight. Defaults to None.
+            portfolio_value (Optional[torch.Tensor], optional): the portfolio value. Defaults to None.
+            rf_weight (Optional[torch.Tensor], optional): the risk free weight. Defaults to None.
 
         Returns:
             bool: whether the action is valid
         """
-        return not self._cash_shortage(action) and not self._asset_shortage(action)
+        return not self._cash_shortage(
+            action, portfolio_value, rf_weight
+        ) and not self._asset_shortage(action, portfolio_weight, portfolio_value)
 
     def possible_actions(self) -> torch.Tensor:
         """get all possible action indexes
@@ -404,25 +436,40 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             possible_action_indexes, dtype=torch.int32, device=self.device
         )
 
-    def action_mapping(self, action_index: int, Q_Values: torch.Tensor) -> int:
+    def action_mapping(
+        self,
+        action_index: int,
+        Q_Values: torch.Tensor,
+        state: Dict[str, torch.Tensor] = {},
+    ) -> int:
         """perform action mapping based on the Q values
 
-        Args:
-            action_index (int): the index of the action to map
-            Q_Values (torch.Tensor): the Q values of all actions
+                Args:
+                    action_index (int): the index of the action to map
+                    Q_Values (torch.Tensor): the Q values of all actions
+                    state (Dict[str, torch.Tensor]): the state tensors. Defaults to {}.
 
-        Raises:
-            ValueError: action not valid
-
-        Returns:
-            int: the index of the mapped action
+                Raises:
+                    ValueError: action not valid
+        s
+                Returns:
+                    int: the index of the mapped action
         """
+        if len(state) > 0:
+            portfolio_weight = state["Portfolio_Weight_Without_rf"]
+            portfolio_value = state["Portfolio_Value"]
+            rf_weight = state["rf_Weight"]
+        else:
+            portfolio_weight = None
+            portfolio_value = None
+            rf_weight = None
         if action_index < 0 or action_index >= len(self.all_actions):
             raise ValueError("action not valid")
         action = self.all_actions[action_index]
-        if self._asset_shortage(action):
-            return self._action_mapping_rule2(action, Q_Values)
-        elif self._cash_shortage(action):
+        if self._asset_shortage(action, portfolio_weight, portfolio_value):
+            action_index = self._action_mapping_rule2(action)
+            action = self.all_actions[action_index]
+        if self._cash_shortage(action, portfolio_value, rf_weight):
             return self._action_mapping_rule1(action, Q_Values)
         return action_index
 
@@ -453,15 +500,12 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         max_index = torch.argmax(possible_values)
         return possible_action_indexes[max_index]
 
-    def _action_mapping_rule2(
-        self, action: torch.Tensor, Q_Values: torch.Tensor
-    ) -> int:
+    def _action_mapping_rule2(self, action: torch.Tensor) -> int:
         """the action mapping rule 2: if there is asset shortage,
         don't trade the asset with shortage
 
         Args:
             action (torch.Tensor): the trading decision of each asset
-            Q_Values (torch.Tensor): the Q values of all actions
 
         Returns:
             int: the index of the mapped action
@@ -473,8 +517,6 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             < torch.abs(new_action) * self.trading_size
         )
         new_action[condition] = 0
-        if self._cash_shortage(new_action):
-            return self._action_mapping_rule1(new_action, Q_Values)
         return self.find_action_index(new_action)
 
     def select_random_action(self) -> int:

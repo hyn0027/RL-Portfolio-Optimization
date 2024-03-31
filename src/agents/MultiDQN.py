@@ -211,7 +211,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                 new_state, reward, done = self.env.act(action_index)
                 self.env.update(action_index)
                 self._update_Q_network()
-                self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+                self._update_epsilon()
                 progress_bar.update(1)
             progress_bar.close()
             self._update_target_network()
@@ -244,7 +244,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                     target_q_values = self.target_Q_network(new_state, False)
                     best_action_index = int(torch.argmax(target_q_values).item())
                     best_action_index = self.env.action_mapping(
-                        best_action_index, target_q_values
+                        best_action_index, target_q_values, new_state
                     )
                     target_q_value = (
                         reward + self.gamma * target_q_values[best_action_index]

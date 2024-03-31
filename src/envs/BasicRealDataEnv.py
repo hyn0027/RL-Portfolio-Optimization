@@ -260,8 +260,13 @@ class BasicRealDataEnv(BaseEnv):
         """
         return self.all_actions[torch.randint(0, len(self.all_actions))]
 
-    def possible_actions(self) -> List[torch.Tensor]:
+    def possible_actions(
+        self, state: Dict[str, torch.Tensor] = None
+    ) -> List[torch.Tensor]:
         """get the possible actions
+
+        Args:
+            state (Dict[str, torch.Tensor], optional): the current state. Defaults to None.
 
         Returns:
             List[torch.Tensor]: the possible actions

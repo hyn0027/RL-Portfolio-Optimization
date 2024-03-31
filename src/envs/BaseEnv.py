@@ -340,31 +340,53 @@ class BaseEnv:
             static_portfolio_value,
         )
 
-    def _cash_shortage(self, trading_size: torch.Tensor) -> bool:
+    def _cash_shortage(
+        self,
+        trading_size: torch.Tensor,
+        portfolio_value: Optional[torch.Tensor] = None,
+        rf_weight: Optional[torch.Tensor] = None,
+    ) -> bool:
         """assert whether there is cash shortage after trading
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
+            portfolio_value (Optional[torch.Tensor], optional): the portfolio value. Defaults to None.
+            rf_weight (Optional[torch.Tensor], optional): the risk free weight. Defaults to None.
 
         Returns:
             bool: whether there is cash shortage after trading
         """
+        if portfolio_value is None:
+            portfolio_value = self.portfolio_value
+        if rf_weight is None:
+            rf_weight = self.rf_weight
         return (
             torch.sum(trading_size) + self._transaction_cost(trading_size)
-            > self.portfolio_value * self.rf_weight
+            > portfolio_value * rf_weight
         )
 
-    def _asset_shortage(self, trading_size: torch.Tensor) -> bool:
+    def _asset_shortage(
+        self,
+        trading_size: torch.Tensor,
+        portfolio_weight: Optional[torch.Tensor] = None,
+        portfolio_value: Optional[torch.Tensor] = None,
+    ) -> bool:
         """assert whether there is asset shortage after trading
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
+            portfolio_weight (torch.Tensor): the portfolio weight. default to None (Use the current portfolio weight)
+            portfolio_value (torch.Tensor): the portfolio value. default to None (Use the current portfolio value)
 
         Returns:
             bool: whether there is asset shortage after trading
         """
+        if portfolio_weight is None:
+            portfolio_weight = self.portfolio_weight
+        if portfolio_value is None:
+            portfolio_value = self.portfolio_value
         return torch.any(
-            self.portfolio_weight[trading_size < 0] * self.portfolio_value
+            portfolio_weight[trading_size < 0] * portfolio_value
             < -trading_size[trading_size < 0]
         )
 
