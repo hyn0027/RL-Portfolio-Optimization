@@ -36,11 +36,12 @@ class BasicRealDataEnv(BaseEnv):
             device (Optional[str], optional): device to run the environment. Defaults to None, which means to use the GPU if available.
         """
         logger.info("Initializing BasicRealDataEnv")
-        super().__init__(args, device)
         self.data = data
         self.asset_codes = data.asset_codes
         self.time_zone: str = args.time_zone
         self.asset_num = len(self.asset_codes)
+
+        super().__init__(args, device)
 
         self.trading_size = torch.tensor(
             args.trading_size, dtype=self.dtype, device=self.device
@@ -243,10 +244,26 @@ class BasicRealDataEnv(BaseEnv):
         """reset the environment."""
         logger.info("Resetting BasicRealDataEnv")
         self.time_index = 0
-        super().initialize_weight()
+        BaseEnv.initialize_weight(self)
 
     def update(self, action: torch.Tensor) -> None:
         if self.find_action_index(action) == -1:
             raise ValueError(f"Invalid action: {action}")
         action = action * self.trading_size
-        super().update(action)
+        BaseEnv.update(self, action)
+
+    def select_random_action(self) -> torch.Tensor:
+        """select a random action
+
+        Returns:
+            torch.Tensor: the random action
+        """
+        return self.all_actions[torch.randint(0, len(self.all_actions))]
+
+    def possible_actions(self) -> List[torch.Tensor]:
+        """get the possible actions
+
+        Returns:
+            List[torch.Tensor]: the possible actions
+        """
+        return self.all_actions

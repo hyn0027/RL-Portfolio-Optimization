@@ -88,9 +88,9 @@ class BaseEnv:
         self.transaction_cost_base = torch.tensor(
             args.transaction_cost_base, dtype=self.dtype, device=self.device
         )
-        
+
         self.initialize_weight()
-        
+
         logger.info("BaseEnv Initialized")
 
     def initialize_weight(self) -> None:
@@ -367,3 +367,14 @@ class BaseEnv:
             self.portfolio_weight[trading_size < 0] * self.portfolio_value
             < -trading_size[trading_size < 0]
         )
+
+    def select_random_action(self) -> torch.Tensor:
+        """select a random action, should be overridden by specific environments
+
+        Raises:
+            NotImplementedError: select_random_action not implemented
+
+        Returns:
+            torch.Tensor: the random action
+        """
+        raise NotImplementedError("select_random_action not implemented")

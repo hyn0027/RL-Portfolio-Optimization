@@ -4,7 +4,7 @@ python3 run.py \
     --agent MultiDQN \
     --env DiscreteRealDataEnv1 \
     --network MultiDQN_LSTM \
-    --asset_codes NVDA MSFT \
+    --asset_codes NVDA MSFT GOOGL \
     --start_date 2020-01-01 \
     --end_date 2023-01-01 \
     --interval 1d \
@@ -12,39 +12,40 @@ python3 run.py \
     --device cpu \
     --pretrain_epochs 1 \
     --train_batch_size 4 \
-    --train_epochs 1 \
-    --episode_length 252 \
+    --train_epochs 8 \
+    --train_learning_rate 0.01 \
+    --episode_length 250 \
     --window_size 4 \
     --mode train \
-    --initial_balance 100000
+    --initial_balance 1000000
 
-python3 run.py \
-    --agent DQN \
-    --env BasicRealDataEnv \
-    --network MultiDQN_LSTM \
-    --asset_codes NVDA MSFT \
-    --start_date 2020-01-01 \
-    --end_date 2023-01-01 \
-    --interval 1d \
-    --annual_sample 252 \
-    --device cpu \
-    --train_batch_size 4 \
-    --train_epochs 1 \
-    --episode_length 252 \
-    --window_size 4 \
-    --mode train \
-    --initial_balance 100000
+# python3 run.py \
+#     --agent DQN \
+#     --env BasicRealDataEnv \
+#     --network MultiDQN_LSTM \
+#     --asset_codes NVDA MSFT \
+#     --start_date 2020-01-01 \
+#     --end_date 2023-01-01 \
+#     --interval 1d \
+#     --annual_sample 252 \
+#     --device cpu \
+#     --train_batch_size 4 \
+#     --train_epochs 1 \
+#     --episode_length 252 \
+#     --window_size 4 \
+#     --mode train \
+#     --initial_balance 100000
 
 python3 run.py \
     --agent MultiDQN \
-    --initial_balance 100000 \
+    --initial_balance 1000000 \
     --env DiscreteRealDataEnv1 \
     --network MultiDQN_LSTM \
-    --asset_codes NVDA MSFT \
+    --asset_codes NVDA MSFT GOOGL \
     --start_date 2023-01-01 \
     --end_date 2024-01-01 \
     --interval 1d \
-    --annual_sample 252 \
+    --annual_sample 250 \
     --device cpu \
     --window_size 4 \
     --mode test \

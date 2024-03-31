@@ -9,6 +9,7 @@ import random
 from envs import register_env
 from utils.data import Data
 from envs.BasicRealDataEnv import BasicRealDataEnv
+from envs.BaseEnv import BaseEnv
 
 logger = get_logger("DiscreteRealDataEnv1")
 
@@ -333,7 +334,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
 
         # for all action[i], weight[i] += action[i] * trading_size / portfolio_value
         trading_size = action * self.trading_size
-        return super()._get_new_portfolio_weight_and_value(trading_size)
+        return BaseEnv._get_new_portfolio_weight_and_value(self, trading_size)
 
     def update(self, action: int) -> None:
         """update the environment with the given action index
@@ -348,13 +349,13 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             raise ValueError("action not valid")
         action = self.all_actions[action]
         trading_size = action * self.trading_size
-        super().update(trading_size)
+        BaseEnv.update(self, trading_size)
 
     def reset(self) -> None:
         """reset the environment to the initial state"""
         logger.info("resetting DiscreteRealDataEnv1")
         self.time_index = self.start_time_index
-        super().initialize_weight()
+        BaseEnv.initialize_weight(self)
 
     def _cash_shortage(self, action: torch.Tensor) -> bool:
         """assert whether there is cash shortage after trading
@@ -365,7 +366,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         Returns:
             bool: whether there is cash shortage after trading
         """
-        return super()._cash_shortage(action * self.trading_size)
+        return BaseEnv._cash_shortage(self, action * self.trading_size)
 
     def _asset_shortage(self, action: torch.Tensor) -> bool:
         """assert whether there is asset shortage after trading
@@ -376,7 +377,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         Returns:
             bool: whether there is asset shortage after trading
         """
-        return super()._asset_shortage(action * self.trading_size)
+        return BaseEnv._asset_shortage(self, action * self.trading_size)
 
     def _action_validity(self, action: torch.Tensor) -> bool:
         """assert whether the action is valid
@@ -389,7 +390,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         """
         return not self._cash_shortage(action) and not self._asset_shortage(action)
 
-    def possible_action_indexes(self) -> torch.Tensor:
+    def possible_actions(self) -> torch.Tensor:
         """get all possible action indexes
 
         Returns:
@@ -475,3 +476,17 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         if self._cash_shortage(new_action):
             return self._action_mapping_rule1(new_action, Q_Values)
         return self.find_action_index(new_action)
+
+    def select_random_action(self) -> int:
+        """select a random valid action, return its index
+
+        Returns:
+            int: the index of the selected action
+        """
+        possible_action_indexes = self.possible_actions()
+        action_index = int(
+            possible_action_indexes[
+                random.randint(0, len(possible_action_indexes) - 1)
+            ].item()
+        )
+        return action_index

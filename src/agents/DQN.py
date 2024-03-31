@@ -1,6 +1,8 @@
 import argparse
 from utils.logging import get_logger
 from typing import Optional, TypeVar
+from tqdm import tqdm
+import random
 
 from agents import register_agent
 from agents.BaseAgent import BaseAgent
@@ -118,7 +120,24 @@ class DQN(BaseAgent[BaseEnv]):
 
     def train(self) -> None:
         """train the DQN agent"""
-        pass
+        self.Q_network.train()
+        self.target_Q_network.eval()
+        self.replay.reset()
+        self.target_Q_network.load_state_dict(self.Q_network.state_dict())
+        for epoch in range(self.train_epochs):
+            self.env.reset()
+            time_indices = self.env.train_time_range()
+            progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+            for _ in time_indices:
+                state = self.env.get_state()
+                if state is None:
+                    action = self.env.select_random_action()
+                else:
+                    if random.random() < self.epsilon:
+                        action = self.env.select_random_action()
+                    else:
+                        for action in self.env.possible_actions():
+                            Q_value = self.Q_network(state, action)
 
     def _update_target_network(self) -> None:
         """update the target network with the Q network weights"""
