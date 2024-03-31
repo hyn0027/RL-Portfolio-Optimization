@@ -186,7 +186,23 @@ class DQN(BaseAgent[BaseEnv]):
         for experience in experiences:
             state, action, reward, new_state = experience
             with torch.no_grad():
-                pass
+                max_Q_value = torch.tensor(
+                    float("-inf"), device=self.device, dtype=self.dtype
+                )
+                for new_action in self.env.possible_actions(new_state):
+                    Q_value = self.target_Q_network(new_state, new_action)
+                    if Q_value > max_Q_value:
+                        max_Q_value = Q_value
+                target = reward + self.gamma * max_Q_value
+            q_value = self.Q_network(state, action)
+            loss += (q_value - target).pow(2) * self.loss_scale
+        if loss < self.loss_min:
+            self.loss_scale *= 2
+        loss.backward()
+        self.train_optimizer.step()
+        self.train_optimizer.zero_grad()
+        self.Q_network.eval()
+        return loss.item()
 
     def _update_target_network(self) -> None:
         """update the target network with the Q network weights"""
