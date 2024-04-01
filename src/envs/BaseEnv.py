@@ -173,15 +173,12 @@ class BaseEnv:
         raise NotImplementedError("state_tensor_names not implemented")
 
     def action_dimension(self) -> torch.Size:
-        """the dimension of the action the agent can take, should be overridden by specific environments
-
-        Raises:
-            NotImplementedError: action_dimension not implemented
+        """the dimension of the action the agent can take
 
         Returns:
             torch.Size: the dimension of the action the agent can take
         """
-        raise NotImplementedError("action_dimension not implemented")
+        return torch.Size(self.get_asset_num())
 
     def get_state(
         self,

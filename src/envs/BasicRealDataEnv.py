@@ -63,7 +63,7 @@ class BasicRealDataEnv(BaseEnv):
 
         self.all_actions = []
         action_number = range(-1, 2)  # -1, 0, 1
-        for action in product(action_number, repeat=len(self.asset_codes)):
+        for action in product(action_number, repeat=self.asset_num):
             self.all_actions.append(
                 torch.tensor(action, dtype=torch.int8, device=self.device)
             )
@@ -167,14 +167,6 @@ class BasicRealDataEnv(BaseEnv):
             List[str]: the names of the state tensors
         """
         return ["price"]
-
-    def action_dimension(self) -> torch.Size:
-        """the dimension of the action the agent can take
-
-        Returns:
-            torch.Size: the dimension of the action the agent can take
-        """
-        return torch.Size([len(self.asset_codes)])
 
     def get_state(
         self,
