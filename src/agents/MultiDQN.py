@@ -77,11 +77,6 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             self.pretrain_batch_size: int = args.pretrain_batch_size
             self.pretrain_learning_rate: float = args.pretrain_learning_rate
 
-            self.train_optimizer = optim.Adam(
-                self.Q_network.parameters(), lr=self.train_learning_rate
-            )
-            self.train_optimizer.zero_grad()
-
         else:
             self.evaluator = Evaluator(args)
         logger.info("MultiDQN initialized")

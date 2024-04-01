@@ -1,9 +1,11 @@
 import argparse
 from typing import List, Optional, Dict, Tuple
 from itertools import product
+import random
 
 from utils.data import Data
 from utils.logging import get_logger
+from envs import register_env
 from envs.BaseEnv import BaseEnv
 
 import torch
@@ -11,6 +13,7 @@ import torch
 logger = get_logger("BasicRealDataEnv")
 
 
+@register_env("BasicRealDataEnv")
 class BasicRealDataEnv(BaseEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
@@ -65,7 +68,7 @@ class BasicRealDataEnv(BaseEnv):
         action_number = range(-1, 2)  # -1, 0, 1
         for action in product(action_number, repeat=self.asset_num):
             self.all_actions.append(
-                torch.tensor(action, dtype=torch.int8, device=self.device)
+                torch.tensor(action, dtype=self.dtype, device=self.device)
             )
 
         logger.info("BasicRealDataEnv initialized")
@@ -148,7 +151,19 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             torch.tensor: the price tensor in the window
         """
-        return self.price_matrix[: time_index - self.window_size + 1, time_index + 1]
+        # return self.price_matrix[:, time_index - self.window_size + 1 : time_index + 1]
+        start_index = time_index - self.window_size + 1
+        if start_index < 0:
+            padding = -start_index
+            start_index = 0
+        else:
+            padding = 0
+
+        slice = self.price_matrix[:, start_index : time_index + 1]
+        if padding > 0:
+            padding_tensor = self.price_matrix[:, 0].unsqueeze(1).repeat(1, padding)
+            slice = torch.cat((padding_tensor, slice), dim=1)
+        return slice
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         """the dimension of the state tensors.
@@ -177,7 +192,7 @@ class BasicRealDataEnv(BaseEnv):
             Dict[str, torch.tensor]: the state tensors
         """
         if self.time_index < self.window_size - 1:
-            raise None
+            return None
         return {
             "price": self._get_price_tensor_in_window(self.time_index),
         }
@@ -223,11 +238,7 @@ class BasicRealDataEnv(BaseEnv):
         done = self.time_index == self.data.time_dimension() - 2
 
         new_state = {
-            "price": (
-                self._get_price_tensor_in_window(self.time_index + 1)
-                if self.time_index + 2 >= self.window_size
-                else None
-            ),
+            "price": (self._get_price_tensor_in_window(self.time_index + 1)),
         }
 
         return new_state, reward, done
@@ -250,7 +261,7 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             torch.Tensor: the random action
         """
-        return self.all_actions[torch.randint(0, len(self.all_actions))]
+        return self.all_actions[random.randint(0, len(self.all_actions) - 1)]
 
     def possible_actions(
         self, state: Dict[str, torch.Tensor] = None

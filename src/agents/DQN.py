@@ -14,6 +14,7 @@ from utils.replay import Replay
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 
 
 BaseEnv = TypeVar("BaseEnv")
@@ -102,6 +103,10 @@ class DQN(BaseAgent[BaseEnv]):
             self.epsilon_decay: float = args.DQN_epsilon_decay
             self.epsilon_min: float = args.DQN_epsilon_min
             self.replay = Replay(args.train_batch_size, args.replay_window)
+            self.train_optimizer = optim.Adam(
+                self.Q_network.parameters(), lr=self.train_learning_rate
+            )
+            self.train_optimizer.zero_grad()
         else:
             self.Q_network: nn.Module = registered_networks[args.network](args)
             logger.info(self.Q_network)
@@ -148,7 +153,7 @@ class DQN(BaseAgent[BaseEnv]):
                                 best_action = action
                         action = best_action
                 new_state, reward, done = self.env.act(action)
-                if not done:
+                if not done and state is not None:
                     self.replay.remember((state, action, reward, new_state))
                 self.env.update(action)
                 self._update_Q_network()
@@ -195,7 +200,7 @@ class DQN(BaseAgent[BaseEnv]):
                         max_Q_value = Q_value
                 target = reward + self.gamma * max_Q_value
             q_value = self.Q_network(state, action)
-            loss += (q_value - target).pow(2) * self.loss_scale
+            loss += nn.functional.mse_loss(q_value, target)
         if loss < self.loss_min:
             self.loss_scale *= 2
         loss.backward()
