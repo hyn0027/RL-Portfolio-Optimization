@@ -43,22 +43,22 @@ class BaseEnv:
             help="risk free return (per time index)",
         )
         parser.add_argument(
-            "--transaction_cost_rate",
+            "--transaction_cost_rate_buy",
             type=float,
             default=0.0025,
-            help="the transaction cost rate for each trading",
+            help="the transaction cost rate for each buy action",
+        )
+        parser.add_argument(
+            "--transaction_cost_rate_sell",
+            type=float,
+            default=0.0025,
+            help="the transaction cost rate for each sell action",
         )
         parser.add_argument(
             "--transaction_cost_base",
             type=float,
             default=0.0,
             help="the transaction cost base (bias) for each trading",
-        )
-        parser.add_argument(
-            "--transaction_cost_shrink",
-            type=float,
-            default=0.0,
-            help="the transaction cost remainder for each trading",
         )
 
     def __init__(
@@ -88,14 +88,15 @@ class BaseEnv:
             args.risk_free_return, dtype=self.dtype, device=self.device
         )
 
-        self.transaction_cost_rate = torch.tensor(
-            args.transaction_cost_rate, dtype=self.dtype, device=self.device
+        self.transaction_cost_rate_buy = torch.tensor(
+            args.transaction_cost_rate_buy, dtype=self.dtype, device=self.device
+        )
+
+        self.transaction_cost_rate_sell = torch.tensor(
+            args.transaction_cost_rate_sell, dtype=self.dtype, device=self.device
         )
         self.transaction_cost_base = torch.tensor(
             args.transaction_cost_base, dtype=self.dtype, device=self.device
-        )
-        self.transaction_cost_shrink = torch.tensor(
-            args.transaction_cost_shrink, dtype=self.dtype, device=self.device
         )
 
         self.initialize_weight()
@@ -134,9 +135,11 @@ class BaseEnv:
         self.portfolio_value = self.portfolio_value.to(self.device)
         self.portfolio_weight = self.portfolio_weight.to(self.device)
         self.rf_weight = self.rf_weight.to(self.device)
-        self.transaction_cost_rate = self.transaction_cost_rate.to(self.device)
+        self.transaction_cost_rate_buy = self.transaction_cost_rate_buy.to(self.device)
+        self.transaction_cost_rate_sell = self.transaction_cost_rate_sell.to(
+            self.device
+        )
         self.transaction_cost_base = self.transaction_cost_base.to(self.device)
-        self.transaction_cost_shrink = self.transaction_cost_shrink.to(self.device)
 
     def train_time_range(self) -> range:
         """the range of time indices, should be overridden by specific environments
@@ -270,30 +273,35 @@ class BaseEnv:
         """
         raise NotImplementedError("_get_price_change_ratio_tensor not implemented")
 
-    def _transaction_cost(
-        self, trading_size: torch.Tensor, portfolio_value: torch.Tensor
-    ) -> torch.Tensor:
+    def _transaction_cost(self, trading_size: torch.Tensor) -> torch.Tensor:
         """compute the transaction cost of the trading
 
         .. code-block:: python
 
-                transaction_cost = sum(abs(trading_size)) * transaction_cost_rate
+                transaction_cost = sum(abs(trading_size) for trading_size > 0) * transaction_cost_rate_buy
+                                 + sum(abs(trading_size) for trading_size < 0) * transaction_cost_rate_sell
                                  + count(trading_size != 0) * transaction_cost_base
-                                 + portfolio_value * transaction_cost_shrink
 
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
-            portfolio_value (torch.Tensor): the portfolio value
 
         Returns:
             torch.Tensor: the transaction cost
         """
-        return (
-            torch.sum(torch.abs(trading_size)) * self.transaction_cost_rate
-            + torch.nonzero(trading_size).size(0) * self.transaction_cost_base
-            + portfolio_value * self.transaction_cost_shrink
+        buy_trading_size = torch.clamp(trading_size, min=0)
+        sell_trading_size = torch.clamp(trading_size, max=0)
+
+        buy_cost = (
+            torch.sum(torch.abs(buy_trading_size)) * self.transaction_cost_rate_buy
+            + torch.nonzero(buy_trading_size).size(0) * self.transaction_cost_base
         )
+        sell_cost = (
+            torch.sum(torch.abs(sell_trading_size)) * self.transaction_cost_rate_sell
+            + torch.nonzero(sell_trading_size).size(0) * self.transaction_cost_base
+        )
+
+        return buy_cost + sell_cost
 
     def _get_new_portfolio_weight_and_value(
         self, trading_size: torch.Tensor
@@ -314,7 +322,7 @@ class BaseEnv:
             self.portfolio_weight + trading_size / self.portfolio_value
         )
         # add transaction cost
-        transaction_cost = self._transaction_cost(trading_size, self.portfolio_value)
+        transaction_cost = self._transaction_cost(trading_size)
         new_portfolio_value = self.portfolio_value - transaction_cost
         new_portfolio_weight = (
             new_portfolio_weight * self.portfolio_value / new_portfolio_value
@@ -374,7 +382,7 @@ class BaseEnv:
         if rf_weight is None:
             rf_weight = self.rf_weight
         return (
-            torch.sum(trading_size) + self._transaction_cost(trading_size, portfolio_value)
+            torch.sum(trading_size) + self._transaction_cost(trading_size)
             > portfolio_value * rf_weight
         )
 
