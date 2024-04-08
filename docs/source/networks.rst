@@ -12,7 +12,7 @@ Submodules
 networks.DQN\_DNN module
 ------------------------
 
-.. automodule:: networks.DQN_DNN
+.. automodule:: networks.DiscreteDNN
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,7 +20,7 @@ networks.DQN\_DNN module
 networks.MultiDQN\_LSTM module
 ------------------------------
 
-.. automodule:: networks.MultiDQN_LSTM
+.. automodule:: networks.MultiDiscreteLSTM
    :members:
    :undoc-members:
    :show-inheritance:

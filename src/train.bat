@@ -5,7 +5,7 @@ set SCRIPT=run.py
 %PYTHON% %SCRIPT% ^
     --agent MultiDQN ^
     --env DiscreteRealDataEnv1 ^
-    --network MultiDQN_LSTM ^
+    --network MultiDiscreteLSTM ^
     --asset_codes NVDA AAPL GOOGL ^
     --start_date 2020-01-01 ^
     --end_date 2023-01-01 ^

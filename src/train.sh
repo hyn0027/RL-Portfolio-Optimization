@@ -3,7 +3,7 @@
 # python3 run.py \
 #     --agent MultiDQN \
 #     --env DiscreteRealDataEnv1 \
-#     --network MultiDQN_LSTM \
+#     --network MultiDiscreteLSTM \
 #     --asset_codes NVDA \
 #     --start_date 2020-01-01 \
 #     --end_date 2023-01-01 \
@@ -22,7 +22,7 @@
 # python3 run.py \
 #     --agent DQN \
 #     --env BasicDiscreteRealDataEnv \
-#     --network DQN_DNN \
+#     --network DiscreteDNN \
 #     --asset_codes NVDA GOOGL \
 #     --start_date 2020-01-01 \
 #     --end_date 2023-01-01 \
@@ -38,7 +38,7 @@
 python3 run.py \
     --agent DQN \
     --env BasicDiscreteRealDataEnv \
-    --network DQN_DNN \
+    --network DiscreteDNN \
     --asset_codes NVDA GOOGL \
     --start_date 2023-01-01 \
     --end_date 2024-01-01 \
@@ -54,7 +54,7 @@ python3 run.py \
 #     --agent MultiDQN \
 #     --initial_balance 1000000 \
 #     --env DiscreteRealDataEnv1 \
-#     --network MultiDQN_LSTM \
+#     --network MultiDiscreteLSTM \
 #     --asset_codes NVDA \
 #     --start_date 2023-01-01 \
 #     --end_date 2024-01-01 \

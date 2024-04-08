@@ -13,7 +13,6 @@ import torch
 logger = get_logger("BasicRealDataEnv")
 
 
-@register_env("BasicRealDataEnv")
 class BasicRealDataEnv(BaseEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:

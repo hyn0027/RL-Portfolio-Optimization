@@ -303,6 +303,20 @@ class BaseEnv:
 
         return buy_cost + sell_cost
 
+    def _find_trading_size_according_to_weight_after_trade(
+        self, weight_after_trade: torch.Tensor
+    ) -> torch.Tensor:
+        """find the trading size according to the weight after trading (don't change day)
+
+        Args:
+            weight_after_trade (torch.Tensor): the weight after trading
+
+        Returns:
+            torch.Tensor: the trading size
+        """
+
+        # TODO
+
     def _get_new_portfolio_weight_and_value(
         self, trading_size: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:

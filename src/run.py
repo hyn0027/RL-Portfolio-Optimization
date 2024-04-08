@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--network",
         type=str,
-        default="MultiDQN_LSTM",
+        default="MultiDiscreteLSTM",
         choices=registered_networks.keys(),
         help="Name of the network to use",
     )
@@ -311,7 +311,7 @@ def main() -> None:
         args.reload_data,
     )
     data.uniform_time(args.time_zone)
-    
+
     args.asset_num = len(args.asset_codes)
 
     # set up environment
