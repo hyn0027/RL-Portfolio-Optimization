@@ -8,14 +8,14 @@ import random
 
 from envs import register_env
 from utils.data import Data
-from envs.BasicRealDataEnv import BasicRealDataEnv
+from envs.BasicDiscreteRealDataEnv import BasicDiscreteRealDataEnv
 from envs.BaseEnv import BaseEnv
 
 logger = get_logger("DiscreteRealDataEnv1")
 
 
 @register_env("DiscreteRealDataEnv1")
-class DiscreteRealDataEnv1(BasicRealDataEnv):
+class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DiscreteRealDataEnv1, DiscreteRealDataEnv1).add_args(parser)

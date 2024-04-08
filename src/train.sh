@@ -21,7 +21,7 @@
 
 # python3 run.py \
 #     --agent DQN \
-#     --env BasicRealDataEnv \
+#     --env BasicDiscreteRealDataEnv \
 #     --network DQN_DNN \
 #     --asset_codes NVDA GOOGL \
 #     --start_date 2020-01-01 \
@@ -30,25 +30,25 @@
 #     --annual_sample 252 \
 #     --device cpu \
 #     --train_batch_size 4 \
-#     --train_epochs 20 \
-#     --window_size 8 \
+#     --train_epochs 10 \
+#     --window_size 4 \
 #     --mode train \
 #     --initial_balance 1000000
 
-python3 run.py \
-    --agent DQN \
-    --env BasicRealDataEnv \
-    --network DQN_DNN \
-    --asset_codes NVDA GOOGL \
-    --start_date 2023-01-01 \
-    --end_date 2024-01-01 \
-    --interval 1d \
-    --annual_sample 252 \
-    --device cpu \
-    --window_size 8 \
-    --mode test \
-    --initial_balance 1000000 \
-    --model_load_path  ../model/Q_net_last_checkpoint.pth
+# python3 run.py \
+#     --agent DQN \
+#     --env BasicDiscreteRealDataEnv \
+#     --network DQN_DNN \
+#     --asset_codes NVDA GOOGL \
+#     --start_date 2023-01-01 \
+#     --end_date 2024-01-01 \
+#     --interval 1d \
+#     --annual_sample 252 \
+#     --device cpu \
+#     --window_size 8 \
+#     --mode test \
+#     --initial_balance 1000000 \
+#     --model_load_path  ../model/Q_net_last_checkpoint.pth
 
 # python3 run.py \
 #     --agent MultiDQN \
