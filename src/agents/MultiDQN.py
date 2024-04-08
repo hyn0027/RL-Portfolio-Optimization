@@ -8,7 +8,7 @@ from tqdm import tqdm
 from agents import register_agent
 from agents.DQN import DQN
 from envs.DiscreteRealDataEnv1 import DiscreteRealDataEnv1
-from evaluate.evaluator import Evaluator
+
 
 import torch
 import torch.nn as nn
@@ -76,9 +76,6 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             self.pretrain_epochs: int = args.pretrain_epochs
             self.pretrain_batch_size: int = args.pretrain_batch_size
             self.pretrain_learning_rate: float = args.pretrain_learning_rate
-
-        else:
-            self.evaluator = Evaluator(args)
         logger.info("MultiDQN initialized")
 
     def train(self) -> None:

@@ -1,8 +1,8 @@
 import argparse
-import os
 from utils.logging import get_logger
 from typing import Optional, Generic, TypeVar
 from datetime import datetime
+from evaluate.evaluator import Evaluator
 
 from utils.file import create_path_recursively
 
@@ -100,7 +100,6 @@ class BaseAgent(Generic[BaseEnv]):
         self.test_mode = test_mode
 
         if not self.test_mode:
-            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             self.model_save_path = args.model_save_path
             create_path_recursively(self.model_save_path)
             self.train_epochs: int = args.train_epochs
@@ -111,6 +110,8 @@ class BaseAgent(Generic[BaseEnv]):
             self.loss_min = torch.tensor(
                 args.loss_min, dtype=self.dtype, device=self.device
             )
+        else:
+            self.evaluator = Evaluator(args)
         logger.info("BaseAgent initialized")
 
     def train(self) -> None:
@@ -120,3 +121,11 @@ class BaseAgent(Generic[BaseEnv]):
             NotImplementedError: train method not implemented
         """
         raise NotImplementedError("train method not implemented")
+
+    def test(self) -> None:
+        """test the agent. Must be implemented by the subclass
+
+        Raises:
+            NotImplementedError: test method not implemented
+        """
+        raise NotImplementedError("test method not implemented")

@@ -9,7 +9,6 @@ from agents import register_agent
 from agents.BaseAgent import BaseAgent
 from envs.BaseEnv import BaseEnv
 from networks import registered_networks
-from evaluate.evaluator import Evaluator
 from utils.replay import Replay
 
 import torch
@@ -120,7 +119,6 @@ class DQN(BaseAgent[BaseEnv]):
             logger.info(f"model loaded from {args.model_load_path}")
 
             self.Q_network.to(self.device)
-            self.evaluate = Evaluator(args)
 
         logger.info("DQN initialized")
 
@@ -136,22 +134,19 @@ class DQN(BaseAgent[BaseEnv]):
             progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
             for _ in time_indices:
                 state = self.env.get_state()
-                if state is None:
+                if random.random() < self.epsilon:
                     action = self.env.select_random_action()
                 else:
-                    if random.random() < self.epsilon:
-                        action = self.env.select_random_action()
-                    else:
-                        max_Q_value = torch.tensor(
-                            float("-inf"), device=self.device, dtype=self.dtype
-                        )
-                        best_action = None
-                        for action in self.env.possible_actions():
-                            Q_value = self.Q_network(state, action)
-                            if Q_value > max_Q_value:
-                                max_Q_value = Q_value
-                                best_action = action
-                        action = best_action
+                    max_Q_value = torch.tensor(
+                        float("-inf"), device=self.device, dtype=self.dtype
+                    )
+                    best_action = None
+                    for action in self.env.possible_actions():
+                        Q_value = self.Q_network(state, action)
+                        if Q_value > max_Q_value:
+                            max_Q_value = Q_value
+                            best_action = action
+                    action = best_action
                 new_state, reward, done = self.env.act(action)
                 if not done and state is not None:
                     self.replay.remember((state, action, reward, new_state))
@@ -213,3 +208,34 @@ class DQN(BaseAgent[BaseEnv]):
         """update the target network with the Q network weights"""
         self.target_Q_network.load_state_dict(self.Q_network.state_dict())
         logger.info("Target network updated")
+
+    def test(self) -> None:
+        """test the DQN agent"""
+        self.Q_network.eval()
+        self.env.reset()
+        time_indices = self.env.test_time_range()
+        progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+        for _ in time_indices:
+            state = self.env.get_state()
+            max_Q_value = torch.tensor(
+                float("-inf"), device=self.device, dtype=self.dtype
+            )
+            best_action = None
+            for action in self.env.possible_actions():
+                Q_value = self.Q_network(state, action)
+                if Q_value > max_Q_value:
+                    max_Q_value = Q_value
+                    best_action = action
+            new_state, _, _ = self.env.act(best_action)
+
+            portfolio_value = self.env.portfolio_value.item()
+            portfolio_weight_before_trade = self.env.portfolio_weight
+            portfolio_weight_after_trade = new_state["Portfolio_Weight_Today"]
+            self.evaluator.push(
+                portfolio_value,
+                (portfolio_weight_before_trade, portfolio_weight_after_trade),
+            )
+            self.env.update(best_action)
+            progress_bar.update(1)
+        progress_bar.close()
+        self.evaluator.evaluate()

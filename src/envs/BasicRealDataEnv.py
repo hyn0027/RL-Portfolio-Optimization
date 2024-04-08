@@ -88,7 +88,7 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             range: the range of time indices
         """
-        return range(0, self.data.time_dimension())
+        return range(0, self.data.time_dimension() - 1)
 
     def _get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
@@ -172,8 +172,6 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             Dict[str, torch.tensor]: the state tensors
         """
-        if self.time_index < self.window_size - 1:
-            return None
         return {
             "price": self._get_price_tensor_in_window(self.time_index),
         }
