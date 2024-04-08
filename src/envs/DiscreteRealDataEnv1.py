@@ -8,14 +8,14 @@ import random
 
 from envs import register_env
 from utils.data import Data
-from envs.BasicDiscreteRealDataEnv import BasicDiscreteRealDataEnv
+from envs.BasicRealDataEnv import BasicRealDataEnv
 from envs.BaseEnv import BaseEnv
 
 logger = get_logger("DiscreteRealDataEnv1")
 
 
 @register_env("DiscreteRealDataEnv1")
-class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
+class DiscreteRealDataEnv1(BasicRealDataEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DiscreteRealDataEnv1, DiscreteRealDataEnv1).add_args(parser)
@@ -444,16 +444,16 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
     ) -> int:
         """perform action mapping based on the Q values
 
-                Args:
-                    action_index (int): the index of the action to map
-                    Q_Values (torch.Tensor): the Q values of all actions
-                    state (Dict[str, torch.Tensor]): the state tensors. Defaults to {}.
+        Args:
+            action_index (int): the index of the action to map
+            Q_Values (torch.Tensor): the Q values of all actions
+            state (Dict[str, torch.Tensor]): the state tensors. Defaults to {}.
 
-                Raises:
-                    ValueError: action not valid
-        s
-                Returns:
-                    int: the index of the mapped action
+        Raises:
+            ValueError: action not valid
+
+        Returns:
+            int: the index of the mapped action
         """
         if len(state) > 0:
             portfolio_weight = state["Portfolio_Weight_Without_rf"]
