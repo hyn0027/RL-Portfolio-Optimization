@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--network",
         type=str,
-        default="MultiDiscreteLSTM",
+        default="MultiValueLSTM",
         choices=registered_networks.keys(),
         help="Name of the network to use",
     )

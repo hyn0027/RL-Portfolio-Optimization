@@ -8,13 +8,13 @@ from networks import register_network
 import torch
 import torch.nn as nn
 
-logger = get_logger("MultiDiscreteLSTM")
+logger = get_logger("MultiValueLSTM")
 
 
-@register_network("MultiDiscreteLSTM")
-class MultiDiscreteLSTM(nn.Module):
+@register_network("MultiValueLSTM")
+class MultiValueLSTM(nn.Module):
     """
-    The MultiDiscreteLSTM model
+    The MultiValueLSTM model
 
     references:
         https://arxiv.org/abs/1907.03665
@@ -80,7 +80,7 @@ class MultiDiscreteLSTM(nn.Module):
         )
 
     def __init__(self, args: argparse.Namespace) -> None:
-        """initialize the MultiDiscreteLSTM model
+        """initialize the MultiValueLSTM model
 
         Args:
             args (argparse.Namespace): the arguments
@@ -111,7 +111,7 @@ class MultiDiscreteLSTM(nn.Module):
 
 
 class LSTMEncoder(nn.Module):
-    """the LSTM encoder for the MultiDiscreteLSTM model"""
+    """the LSTM encoder for the MultiValueLSTM model"""
 
     def __init__(self, args: argparse.Namespace) -> None:
         """initialize the LSTM encoder
@@ -142,7 +142,7 @@ class LSTMEncoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    """the decoder for the MultiDiscreteLSTM model on pretraining"""
+    """the decoder for the MultiValueLSTM model on pretraining"""
 
     def __init__(self, args: argparse.Namespace) -> None:
         """initialize the decoder
@@ -170,7 +170,7 @@ class Decoder(nn.Module):
 
 
 class DNN(nn.Module):
-    """the DNN for the MultiDiscreteLSTM model on training"""
+    """the DNN for the MultiValueLSTM model on training"""
 
     def __init__(self, args: argparse.Namespace) -> None:
         """initialize the DNN

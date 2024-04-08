@@ -296,8 +296,11 @@ class BaseEnv:
             torch.sum(torch.abs(buy_trading_size)) * self.transaction_cost_rate_buy
             + torch.nonzero(buy_trading_size).size(0) * self.transaction_cost_base
         )
+        rate_sell = self.transaction_cost_rate_sell / (
+            1 + self.transaction_cost_rate_sell
+        )
         sell_cost = (
-            torch.sum(torch.abs(sell_trading_size)) * self.transaction_cost_rate_sell
+            torch.sum(torch.abs(sell_trading_size)) * rate_sell
             + torch.nonzero(sell_trading_size).size(0) * self.transaction_cost_base
         )
 
