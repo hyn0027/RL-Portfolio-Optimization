@@ -17,6 +17,14 @@ envs.BaseEnv module
    :undoc-members:
    :show-inheritance:
 
+envs.BasicDiscreteRealDataEnv module
+------------------------------------
+
+.. automodule:: envs.BasicDiscreteRealDataEnv
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 envs.BasicRealDataEnv module
 ----------------------------
 

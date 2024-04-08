@@ -8,7 +8,7 @@ from tqdm import tqdm
 from agents import register_agent
 from agents.DQN import DQN
 from envs.DiscreteRealDataEnv1 import DiscreteRealDataEnv1
-from evaluate.evaluator import Evaluator
+
 
 import torch
 import torch.nn as nn
@@ -76,14 +76,6 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             self.pretrain_epochs: int = args.pretrain_epochs
             self.pretrain_batch_size: int = args.pretrain_batch_size
             self.pretrain_learning_rate: float = args.pretrain_learning_rate
-
-            self.train_optimizer = optim.Adam(
-                self.Q_network.parameters(), lr=self.train_learning_rate
-            )
-            self.train_optimizer.zero_grad()
-
-        else:
-            self.evaluator = Evaluator(args)
         logger.info("MultiDQN initialized")
 
     def train(self) -> None:
@@ -174,10 +166,10 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
 
     def _multiDQN_train(self) -> None:
         """the training step of the multiDQN algorithm"""
-        self.Q_network.train()
+        self.Q_network.eval()
+        self.target_Q_network.load_state_dict(self.Q_network.state_dict())
         self.target_Q_network.eval()
         self.replay.reset()
-        self.target_Q_network.load_state_dict(self.Q_network.state_dict())
         for epoch in range(self.train_epochs):
             episode = self.env.sample_distribution_and_set_episode()
             self.env.set_episode(episode)
@@ -187,15 +179,10 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             for _ in time_indices:
                 state = self.env.get_state()
                 if state is None:
-                    possible_action_indexes = self.env.possible_action_indexes()
-                    action_index = int(
-                        possible_action_indexes[
-                            random.randint(0, len(possible_action_indexes) - 1)
-                        ].item()
-                    )
+                    action_index = self.env.select_random_action()
                 else:
                     experience_list = []
-                    for possible_action_index in self.env.possible_action_indexes():
+                    for possible_action_index in self.env.possible_actions():
                         new_state, reward, done = self.env.act(possible_action_index)
                         if done:
                             break
@@ -206,12 +193,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                         self.replay.remember(experience_list)
 
                     if random.random() < self.epsilon:
-                        possible_action_indexes = self.env.possible_action_indexes()
-                        action_index = int(
-                            possible_action_indexes[
-                                random.randint(0, len(possible_action_indexes) - 1)
-                            ].item()
-                        )
+                        action_index = self.env.select_random_action()
                     else:
                         action_q_value = self.Q_network(state, False)
                         action_index = int(torch.argmax(action_q_value).item())
@@ -221,7 +203,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                 new_state, reward, done = self.env.act(action_index)
                 self.env.update(action_index)
                 self._update_Q_network()
-                self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+                self._update_epsilon()
                 progress_bar.update(1)
             progress_bar.close()
             self._update_target_network()
@@ -243,6 +225,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         Returns:
             float: the training loss
         """
+        self.Q_network.train()
         if not self.replay.has_enough_samples():
             return float("nan")
         K = self.replay.sample()
@@ -253,7 +236,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                     target_q_values = self.target_Q_network(new_state, False)
                     best_action_index = int(torch.argmax(target_q_values).item())
                     best_action_index = self.env.action_mapping(
-                        best_action_index, target_q_values
+                        best_action_index, target_q_values, new_state
                     )
                     target_q_value = (
                         reward + self.gamma * target_q_values[best_action_index]
@@ -265,6 +248,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         loss.backward()
         self.train_optimizer.step()
         self.train_optimizer.zero_grad()
+        self.Q_network.eval()
         return loss.item()
 
     def test(self) -> None:
@@ -277,12 +261,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         for _ in time_indices:
             state = self.env.get_state()
             if state is None:
-                possible_action_indexes = self.env.possible_action_indexes()
-                action_index = int(
-                    possible_action_indexes[
-                        random.randint(0, len(possible_action_indexes) - 1)
-                    ].item()
-                )
+                action_index = self.env.select_random_action()
             else:
                 action_q_value = self.Q_network(state, False)
                 action_index = int(torch.argmax(action_q_value).item())

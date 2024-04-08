@@ -9,6 +9,14 @@ networks package
 Submodules
 ----------
 
+networks.DQN\_DNN module
+------------------------
+
+.. automodule:: networks.DQN_DNN
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 networks.MultiDQN\_LSTM module
 ------------------------------
 

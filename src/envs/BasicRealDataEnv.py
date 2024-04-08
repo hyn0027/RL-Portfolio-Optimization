@@ -1,14 +1,19 @@
 import argparse
-from typing import List, Optional, Tuple
-import torch
+from typing import List, Optional, Dict, Tuple
+from itertools import product
+import random
 
 from utils.data import Data
 from utils.logging import get_logger
+from envs import register_env
 from envs.BaseEnv import BaseEnv
+
+import torch
 
 logger = get_logger("BasicRealDataEnv")
 
 
+@register_env("BasicRealDataEnv")
 class BasicRealDataEnv(BaseEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
@@ -28,11 +33,12 @@ class BasicRealDataEnv(BaseEnv):
             device (Optional[str], optional): device to run the environment. Defaults to None, which means to use the GPU if available.
         """
         logger.info("Initializing BasicRealDataEnv")
-        super().__init__(args, device)
         self.data = data
         self.asset_codes = data.asset_codes
         self.time_zone: str = args.time_zone
         self.asset_num = len(self.asset_codes)
+
+        super().__init__(args, device)
 
         price_list = []
         for time_index in range(0, self.data.time_dimension()):
@@ -56,9 +62,9 @@ class BasicRealDataEnv(BaseEnv):
         Args:
             device (torch.device): the device to move to
         """
-        self.device = device
-        self.price_matrix = self.price_matrix.to(device)
-        self.price_change_matrix = self.price_change_matrix.to(device)
+        super().to(device)
+        self.price_matrix = self.price_matrix.to(self.device)
+        self.price_change_matrix = self.price_change_matrix.to(self.device)
 
     def get_asset_num(self) -> int:
         """get the number of assets, excluding risk-free asset
@@ -74,7 +80,7 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             range: the range of time indices
         """
-        return range(0, self.data.time_dimension())
+        return range(0, self.data.time_dimension() - 1)
 
     def test_time_range(self) -> range:
         """the range of time indices
@@ -82,7 +88,7 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             range: the range of time indices
         """
-        return range(0, self.data.time_dimension())
+        return range(0, self.data.time_dimension() - 1)
 
     def _get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
@@ -101,7 +107,7 @@ class BasicRealDataEnv(BaseEnv):
             time_index = self.time_index
         return self.price_change_matrix[:, time_index - 1]
 
-    def _get_price(self, time_index: Optional[int] = None) -> torch.tensor:
+    def _get_price_tensor(self, time_index: Optional[int] = None) -> torch.tensor:
         """get the price tensor at a given time
 
         Args:
@@ -115,3 +121,63 @@ class BasicRealDataEnv(BaseEnv):
         if time_index is None:
             time_index = self.time_index
         return self.price_matrix[:, time_index]
+
+    def _get_price_tensor_in_window(self, time_index: int) -> torch.tensor:
+        """get the price tensor in a window centered at a given time
+
+        Args:
+            time_index (int): the time index to get the price
+            window_size (int): the window size
+
+        Returns:
+            torch.tensor: the price tensor in the window
+        """
+        # return self.price_matrix[:, time_index - self.window_size + 1 : time_index + 1]
+        start_index = time_index - self.window_size + 1
+        if start_index < 0:
+            padding = -start_index
+            start_index = 0
+        else:
+            padding = 0
+
+        slice = self.price_matrix[:, start_index : time_index + 1]
+        if padding > 0:
+            padding_tensor = self.price_matrix[:, 0].unsqueeze(1).repeat(1, padding)
+            slice = torch.cat((padding_tensor, slice), dim=1)
+        return slice
+
+    def state_dimension(self) -> Dict[str, torch.Size]:
+        """the dimension of the state tensors.
+
+        Returns:
+            Dict[str, torch.Size]: the dimension of the state tensors
+        """
+        return {
+            "price": torch.Size([self.asset_num, self.window_size]),
+        }
+
+    def state_tensor_names(self) -> List[str]:
+        """the names of the state tensors
+
+        Returns:
+            List[str]: the names of the state tensors
+        """
+        return ["price"]
+
+    def get_state(
+        self,
+    ) -> Optional[Dict[str, torch.Tensor]]:
+        """get the state tensors at the current time.
+
+        Returns:
+            Dict[str, torch.tensor]: the state tensors
+        """
+        return {
+            "price": self._get_price_tensor_in_window(self.time_index),
+        }
+
+    def reset(self) -> None:
+        """reset the environment."""
+        logger.info("Resetting BasicRealDataEnv")
+        self.time_index = 0
+        BaseEnv.initialize_weight(self)

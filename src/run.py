@@ -311,6 +311,8 @@ def main() -> None:
         args.reload_data,
     )
     data.uniform_time(args.time_zone)
+    
+    args.asset_num = len(args.asset_codes)
 
     # set up environment
     env = registered_envs[args.env](args, data, args.device)

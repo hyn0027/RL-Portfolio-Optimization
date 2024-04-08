@@ -88,6 +88,9 @@ class BaseEnv:
         self.transaction_cost_base = torch.tensor(
             args.transaction_cost_base, dtype=self.dtype, device=self.device
         )
+
+        self.initialize_weight()
+
         logger.info("BaseEnv Initialized")
 
     def initialize_weight(self) -> None:
@@ -170,15 +173,12 @@ class BaseEnv:
         raise NotImplementedError("state_tensor_names not implemented")
 
     def action_dimension(self) -> torch.Size:
-        """the dimension of the action the agent can take, should be overridden by specific environments
-
-        Raises:
-            NotImplementedError: action_dimension not implemented
+        """the dimension of the action the agent can take
 
         Returns:
             torch.Size: the dimension of the action the agent can take
         """
-        raise NotImplementedError("action_dimension not implemented")
+        return torch.Size(self.get_asset_num())
 
     def get_state(
         self,
@@ -193,7 +193,9 @@ class BaseEnv:
         """
         raise NotImplementedError("get_state not implemented")
 
-    def act(self, action: torch.tensor) -> Tuple[Dict[str, torch.tensor], float, bool]:
+    def act(
+        self, action: torch.tensor
+    ) -> Tuple[Dict[str, torch.tensor], torch.Tensor, bool]:
         """update the environment with the given action at the given time, should be overridden by specific environments
 
         Args:
@@ -203,7 +205,7 @@ class BaseEnv:
             NotImplementedError: act not implemented
 
         Returns:
-            Tuple[Dict[str, torch.tensor], float, bool]: the new state, the reward, and whether the episode is done
+            Tuple[Dict[str, torch.tensor], torch.Tensor, bool]: the new state, the reward, and whether the episode is done
         """
         raise NotImplementedError("act not implemented")
 
@@ -335,30 +337,63 @@ class BaseEnv:
             static_portfolio_value,
         )
 
-    def _cash_shortage(self, trading_size: torch.Tensor) -> bool:
+    def _cash_shortage(
+        self,
+        trading_size: torch.Tensor,
+        portfolio_value: Optional[torch.Tensor] = None,
+        rf_weight: Optional[torch.Tensor] = None,
+    ) -> bool:
         """assert whether there is cash shortage after trading
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
+            portfolio_value (Optional[torch.Tensor], optional): the portfolio value. Defaults to None.
+            rf_weight (Optional[torch.Tensor], optional): the risk free weight. Defaults to None.
 
         Returns:
             bool: whether there is cash shortage after trading
         """
+        if portfolio_value is None:
+            portfolio_value = self.portfolio_value
+        if rf_weight is None:
+            rf_weight = self.rf_weight
         return (
             torch.sum(trading_size) + self._transaction_cost(trading_size)
-            > self.portfolio_value * self.rf_weight
+            > portfolio_value * rf_weight
         )
 
-    def _asset_shortage(self, trading_size: torch.Tensor) -> bool:
+    def _asset_shortage(
+        self,
+        trading_size: torch.Tensor,
+        portfolio_weight: Optional[torch.Tensor] = None,
+        portfolio_value: Optional[torch.Tensor] = None,
+    ) -> bool:
         """assert whether there is asset shortage after trading
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
+            portfolio_weight (torch.Tensor): the portfolio weight. default to None (Use the current portfolio weight)
+            portfolio_value (torch.Tensor): the portfolio value. default to None (Use the current portfolio value)
 
         Returns:
             bool: whether there is asset shortage after trading
         """
+        if portfolio_weight is None:
+            portfolio_weight = self.portfolio_weight
+        if portfolio_value is None:
+            portfolio_value = self.portfolio_value
         return torch.any(
-            self.portfolio_weight[trading_size < 0] * self.portfolio_value
+            portfolio_weight[trading_size < 0] * portfolio_value
             < -trading_size[trading_size < 0]
         )
+
+    def select_random_action(self) -> torch.Tensor:
+        """select a random action, should be overridden by specific environments
+
+        Raises:
+            NotImplementedError: select_random_action not implemented
+
+        Returns:
+            torch.Tensor: the random action
+        """
+        raise NotImplementedError("select_random_action not implemented")
