@@ -307,18 +307,31 @@ class BaseEnv:
         return buy_cost + sell_cost
 
     def _find_trading_size_according_to_weight_after_trade(
-        self, weight_after_trade: torch.Tensor
+        self,
+        portfolio_weight_before_trade: torch.Tensor,
+        rf_weight_before_trade: torch.Tensor,
+        portfolio_weight_after_trade: torch.Tensor,
+        rf_weight_after_trade: torch.Tensor,
     ) -> torch.Tensor:
-        """find the trading size according to the weight after trading (don't change day)
+        """find the trading size according to the weight before and after trading (don't change day)
+
+        Reference: https://arxiv.org/abs/1706.10059 (Section 2.3)
 
         Args:
-            weight_after_trade (torch.Tensor): the weight after trading
+            portfolio_weight_before_trade (torch.Tensor): the weight before trading
+            rf_weight_before_trade (torch.Tensor): the risk free weight before trading
+            portfolio_weight_after_trade (torch.Tensor): the weight after trading
+            rf_weight_after_trade (torch.Tensor): the risk free weight after trading
 
         Returns:
             torch.Tensor: the trading size
         """
+        cp = self.transaction_cost_rate_buy
+        cs = self.transaction_cost_rate_sell
 
-        # TODO
+        def f(mu: torch.Tensor) -> torch.Tensor:
+            factor = 1 / (1 - cp * rf_weight_after_trade)
+            (1 - cp * rf_weight_before_trade) - (cs + cp - cs * cp)
 
     def _get_new_portfolio_weight_and_value(
         self, trading_size: torch.Tensor
