@@ -13,7 +13,12 @@ logger = get_logger("ValueDNN")
 
 @register_network("ValueDNN")
 class ValueDNN(nn.Module):
-    """The ValueDNN model"""
+    """
+    The ValueDNN model
+
+    Reference:
+        original paper: https://arxiv.org/abs/1907.03665
+    """
 
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:

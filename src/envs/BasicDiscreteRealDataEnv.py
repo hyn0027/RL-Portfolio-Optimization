@@ -80,7 +80,7 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         return -1
 
     def act(
-        self, action: torch.tensor
+        self, action: torch.Tensor
     ) -> Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
         """update the environment with the given action at the given time
 
@@ -101,7 +101,9 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)
 
-        reward = new_portfolio_value - self.portfolio_value
+        reward = (
+            (new_portfolio_value - self.portfolio_value) / self.portfolio_value * 100
+        )
 
         done = self.time_index == self.data.time_dimension() - 2
 
@@ -113,6 +115,14 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         return new_state, reward, done
 
     def update(self, action: torch.Tensor) -> None:
+        """update the environment with the given action
+
+        Args:
+            action (torch.Tensor): the action to take
+
+        Raises:
+            ValueError: the action is invalid
+        """
         if self.find_action_index(action) == -1:
             raise ValueError(f"Invalid action: {action}")
         action = action * self.trading_size

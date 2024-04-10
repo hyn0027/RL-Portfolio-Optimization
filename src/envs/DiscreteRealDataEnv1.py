@@ -16,6 +16,11 @@ logger = get_logger("DiscreteRealDataEnv1")
 
 @register_env("DiscreteRealDataEnv1")
 class DiscreteRealDataEnv1(BasicRealDataEnv):
+    """
+    Reference:
+        original paper: https://arxiv.org/abs/1907.03665
+    """
+
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DiscreteRealDataEnv1, DiscreteRealDataEnv1).add_args(parser)
