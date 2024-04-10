@@ -70,6 +70,24 @@ class BaseAgent(Generic[BaseEnv]):
         parser.add_argument(
             "--loss_min", type=float, default=0.0001, help="minimal value of loss"
         )
+        parser.add_argument(
+            "--replay_sample_distribution",
+            type=str,
+            choices=["uniform", "geometric"],
+            default="uniform",
+            help="replay sample distribution",
+        )
+        parser.add_argument(
+            "--replay_sample_geometric_p",
+            type=float,
+            default=0.5,
+            help="geometric distribution parameter",
+        )
+        parser.add_argument(
+            "--replay_sample_unique",
+            action="store_true",
+            help="sample unique experiences",
+        )
 
     def __init__(
         self,

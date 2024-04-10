@@ -101,7 +101,7 @@ class DQN(BaseAgent[BaseEnv]):
             self.epsilon: float = args.DQN_epsilon
             self.epsilon_decay: float = args.DQN_epsilon_decay
             self.epsilon_min: float = args.DQN_epsilon_min
-            self.replay = Replay(args.train_batch_size, args.replay_window)
+            self.replay = Replay(args)
             self.train_optimizer = optim.Adam(
                 self.Q_network.parameters(), lr=self.train_learning_rate
             )

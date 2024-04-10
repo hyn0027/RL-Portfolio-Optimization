@@ -1,7 +1,10 @@
 from utils.logging import get_logger
-from typing import Optional, Any
+import argparse
+from typing import Any
+import numpy as np
 from collections import deque
 import random
+import copy
 
 logger = get_logger("Replay")
 
@@ -9,15 +12,22 @@ logger = get_logger("Replay")
 class Replay:
     """The replay memory"""
 
-    def __init__(self, batch_size: int, max_len: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        args: argparse.Namespace,
+    ) -> None:
         """initialize the replay memory
 
         Args:
-            batch_size (int): the batch size
-            max_len (Optional[int], optional): the replay buffer size. Defaults to None.
+            args (argparse.Namespace): the arguments
         """
-        self.batch_size = batch_size
-        self.memory = [] if max_len is None else deque(maxlen=max_len)
+        self.batch_size = args.train_batch_size
+        self.memory = (
+            [] if args.replay_window == 0 else deque(maxlen=args.replay_window)
+        )
+        self.sample_distribution = args.replay_sample_distribution
+        self.sample_geometric_p = args.replay_sample_geometric_p
+        self.sample_unique = args.replay_sample_unique
         logger.info("Replay initialized")
 
     def remember(self, experience: Any) -> None:
@@ -34,7 +44,36 @@ class Replay:
         Returns:
             Any: the batch of experiences
         """
-        return random.sample(self.memory, self.batch_size)
+        if self.sample_distribution == "uniform":
+            if self.sample_unique:
+                return random.sample(self.memory, self.batch_size)
+            else:
+                return random.choices(self.memory, k=self.batch_size)
+        if self.sample_distribution == "geometric":
+            if self.sample_unique:
+                return_list = []
+                memory_copy = copy.deepcopy(self.memory)
+                memory_len = len(memory_copy)
+                indices = np.random.geometric(self.sample_geometric_p, self.batch_size)
+                for idx in indices:
+                    index = memory_len - idx
+                    if index < 0:
+                        index = memory_len - 1
+                    return_list.append(memory_copy.pop(index))
+                    memory_len -= 1
+                    memory_copy = memory_copy[:index] + memory_copy[index + 1 :]
+                return return_list
+            else:
+                indices = np.random.geometric(self.sample_geometric_p, self.batch_size)
+                memory_len = len(self.memory)
+                for i in range(len(indices)):
+                    indices[i] = memory_len - indices[i]
+                    if indices[i] < 0:
+                        indices[i] = memory_len - 1
+                return [self.memory[i] for i in indices]
+        raise NotImplementedError(
+            f"sample distribution {self.sample_distribution} not implemented"
+        )
 
     def reset(self) -> None:
         """reset the replay memory to an empty state"""
@@ -50,4 +89,7 @@ class Replay:
         Returns:
             bool: whether the replay memory has enough samples
         """
-        return len(self.memory) >= self.batch_size
+        if self.sample_unique:
+            return len(self.memory) >= self.batch_size
+        else:
+            return len(self.memory) >= 1
