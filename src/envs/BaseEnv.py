@@ -312,6 +312,7 @@ class BaseEnv:
         rf_weight_before_trade: torch.Tensor,
         portfolio_weight_after_trade: torch.Tensor,
         rf_weight_after_trade: torch.Tensor,
+        portfolio_value_before_trade: torch.Tensor,
     ) -> torch.Tensor:
         """find the trading size according to the weight before and after trading (don't change day)
 
@@ -322,6 +323,7 @@ class BaseEnv:
             rf_weight_before_trade (torch.Tensor): the risk free weight before trading
             portfolio_weight_after_trade (torch.Tensor): the weight after trading
             rf_weight_after_trade (torch.Tensor): the risk free weight after trading
+            portfolio_value_before_trade (torch.Tensor): the portfolio value before trading
 
         Returns:
             torch.Tensor: the trading size
@@ -331,7 +333,41 @@ class BaseEnv:
 
         def f(mu: torch.Tensor) -> torch.Tensor:
             factor = 1 / (1 - cp * rf_weight_after_trade)
-            (1 - cp * rf_weight_before_trade) - (cs + cp - cs * cp)
+            total = (
+                1
+                - cp * rf_weight_before_trade
+                - (cs + cp - cs * cp)
+                * torch.sum(
+                    torch.relu(
+                        portfolio_weight_before_trade
+                        - mu * portfolio_weight_after_trade
+                    )
+                )
+            )
+            return factor * total
+
+        mu = (
+            (cp + cs)
+            / 2
+            * torch.sum(
+                torch.abs(portfolio_weight_after_trade - portfolio_weight_before_trade)
+            )
+        )
+        prev_mu = torch.tensor(float("inf"), dtype=self.dtype, device=self.device)
+
+        threshold = 1e-6
+        max_iter = 100
+
+        while torch.abs(mu - prev_mu) > threshold and max_iter > 0:
+            prev_mu = mu
+            mu = f(mu)
+            max_iter -= 1
+
+        trading_size = portfolio_value_before_trade * (
+            portfolio_weight_after_trade * mu - portfolio_weight_before_trade
+        )
+
+        return trading_size
 
     def _get_new_portfolio_weight_and_value(
         self, trading_size: torch.Tensor
