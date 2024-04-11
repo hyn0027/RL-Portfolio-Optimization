@@ -98,6 +98,7 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
             new_portfolio_weight,
             new_portfolio_weight_next_day,
             new_rf_weight,
+            new_rf_weight_next_day,
             new_portfolio_value,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)
@@ -117,6 +118,7 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         )
 
         Xt_new = torch.stack((vt_new, vt_hi_new, vt_lo_new), dim=0)
+        Wt_1_new = torch.cat()
 
         return (
             {
@@ -142,6 +144,7 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
             new_portfolio_weight,
             new_portfolio_weight_next_day,
             new_rf_weight,
+            new_rf_weight_next_day,
             new_portfolio_value,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)

@@ -48,6 +48,7 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             new_portfolio_weight,
             new_portfolio_weight_next_day,
             new_rf_weight,
+            new_rf_weight_next_day,
             new_portfolio_value,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)

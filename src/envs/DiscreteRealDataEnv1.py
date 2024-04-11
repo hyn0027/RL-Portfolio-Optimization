@@ -296,6 +296,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             new_portfolio_weight,
             new_portfolio_weight_next_day,
             new_rf_weight,
+            new_rf_weight_next_day,
             new_portfolio_value,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)
@@ -315,19 +316,24 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
                 else None
             ),
             "Portfolio_Weight": self._concat_weight(
-                new_portfolio_weight_next_day, new_rf_weight
+                new_portfolio_weight_next_day, new_rf_weight_next_day
             ),
             "Portfolio_Weight_Today": new_portfolio_weight,
             "Portfolio_Weight_Without_rf": new_portfolio_weight_next_day,
-            "rf_Weight": new_rf_weight,
+            "rf_Weight": new_rf_weight_next_day,
             "Portfolio_Value": new_portfolio_value,
         }
 
         return new_state, reward, done
 
-    def _get_new_portfolio_weight_and_value(
-        self, action: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _get_new_portfolio_weight_and_value(self, action: torch.Tensor) -> Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
         """get the new portfolio weight and value after trading and transitioning to the next day
 
         Args:

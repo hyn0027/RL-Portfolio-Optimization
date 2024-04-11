@@ -236,7 +236,7 @@ class BaseEnv:
         Args:
             trading_size (torch.Tensor): the trading size of each asset
         """
-        _, self.portfolio_weight, self.rf_weight, self.portfolio_value, _ = (
+        _, self.portfolio_weight, _, self.rf_weight, self.portfolio_value, _ = (
             BaseEnv._get_new_portfolio_weight_and_value(self, trading_size)
         )
         self.time_index += 1
@@ -367,9 +367,14 @@ class BaseEnv:
 
         return trading_size
 
-    def _get_new_portfolio_weight_and_value(
-        self, trading_size: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _get_new_portfolio_weight_and_value(self, trading_size: torch.Tensor) -> Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
         """get the new portfolio weight and value after trading and transitioning to the next day
 
         Args:
@@ -378,7 +383,8 @@ class BaseEnv:
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
                 the new portfolio weight, the new portfolio weight at the next day,
-                the new risk free weight at the next day, the new portfolio value at the next day,
+                the new risk free weight, the new risk free weight at the next day,
+                the new portfolio value at the next day,
                 and the portfolio value at the next day with static weight
         """
         # get portfolio weight after trading
@@ -420,6 +426,7 @@ class BaseEnv:
         return (
             new_portfolio_weight,
             new_portfolio_weight_next_day,
+            new_rf_weight,
             new_rf_weight_next_day,
             new_portfolio_value_next_day,
             static_portfolio_value,
