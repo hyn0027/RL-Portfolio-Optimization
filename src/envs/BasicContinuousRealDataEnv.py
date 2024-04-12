@@ -32,9 +32,21 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
     def to(self, device: str) -> None:
         super().to(device)
 
-    def act(
-        self, action: torch.Tensor
-    ) -> Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
+    def get_state(
+        self,
+    ) -> Optional[Dict[str, torch.Tensor]]:
+        """get the state tensors at the current time.
+
+        Returns:
+            Dict[str, torch.Tensor]: the state tensors
+        """
+        return {
+            "price": self._get_price_tensor_in_window(self.time_index),
+            "time_index": self.time_index,
+            "portfolio_value": self.portfolio_value,
+        }
+
+    def act(self, action_weight: torch.Tensor, state: Dict) -> torch.Tensor:
         """
         perform an action (the trading size)
 
@@ -52,22 +64,15 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             new_portfolio_value,
             new_portfolio_value_next_day,
             static_portfolio_value,
-        ) = self._get_new_portfolio_weight_and_value(action)
+        ) = self._get_new_portfolio_weight_and_value(action_weight, state["time_index"])
 
         reward = (
-            (new_portfolio_value_next_day - self.portfolio_value)
-            / self.portfolio_value
+            (new_portfolio_value_next_day - state["portfolio_value"])
+            / state["portfolio_value"]
             * 100
         )
 
-        done = self.time_index == self.data.time_dimension() - 2
-
-        new_state = {
-            "price": (self._get_price_tensor_in_window(self.time_index + 1)),
-            "Portfolio_Weight_Today": new_portfolio_weight,
-        }
-
-        return new_state, reward, done
+        return reward
 
     def update(self, action: torch.Tensor) -> None:
         """

@@ -50,12 +50,6 @@ class BaseAgent(Generic[BaseEnv]):
             help="Path to load model from",
         )
         parser.add_argument(
-            "--train_batch_size",
-            type=int,
-            default=32,
-            help="batch size for training",
-        )
-        parser.add_argument(
             "--train_epochs",
             type=int,
             default=500,
@@ -103,7 +97,6 @@ class BaseAgent(Generic[BaseEnv]):
             self.model_save_path = args.model_save_path
             create_path_recursively(self.model_save_path)
             self.train_epochs: int = args.train_epochs
-            self.train_batch_size: int = args.train_batch_size
             self.train_learning_rate: float = args.train_learning_rate
 
             self.loss_scale = 1

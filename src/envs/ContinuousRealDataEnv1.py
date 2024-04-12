@@ -48,7 +48,7 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         """
         return {
             "Xt": torch.Size([3, self.window_size, self.asset_num]),
-            "Wt_ 1": torch.size([self.asset_num + 1]),
+            "Wt_ 1": torch.size([self.asset_num]),
         }
 
     def state_tensor_names(self) -> List[str]:
@@ -71,18 +71,23 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         vt_hi = self._get_high_price_tensor_in_window(self.time_index).transpose(0, 1)
         vt_lo = self._get_low_price_tensor_in_window(self.time_index).transpose(0, 1)
 
+        vt_hi = vt_hi / vt[0]
+        vt_lo = vt_lo / vt[0]
+        vt = vt / vt[0]
+
         Xt = torch.stack((vt, vt_hi, vt_lo), dim=0)
-        w = self.previous_weight
-        Wt_1 = torch.cat((torch.tensor([1.0]) - torch.sum(w), w), dim=0)
+        Wt_1 = self.previous_weight
 
         return {
             "Xt": Xt,
             "Wt_1": Wt_1,
+            "time_index": self.time_index,
+            "portfolio_value": self.portfolio_value,
+            "portfolio_weight": self.portfolio_weight,
+            "previous_value": self.previous_value,
         }
 
-    def act(
-        self, action_weight: torch.Tensor
-    ) -> Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
+    def act(self, action_weight: torch.Tensor, state: Dict) -> torch.Tensor:
         """
         perform an action (the trading size)
 
@@ -93,7 +98,10 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
             Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]: the new state, reward, and whether the episode is done
         """
         action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
-            self, self.portfolio_weight, action_weight, self.portfolio_value
+            self,
+            state["portfolio_weight"],
+            action_weight,
+            state["portfolio_value"],
         )
         (
             new_portfolio_weight,
@@ -103,30 +111,13 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
             new_portfolio_value,
             new_portfolio_value_next_day,
             static_portfolio_value,
-        ) = self._get_new_portfolio_weight_and_value(action)
-
-        reward = torch.log(new_portfolio_value / self.previous_value)
-
-        done = self.time_index == self.data.time_dimension() - 2
-
-        vt_new = self._get_price_tensor_in_window(self.time_index + 1).transpose(0, 1)
-        vt_hi_new = self._get_high_price_tensor_in_window(
-            self.time_index + 1
-        ).transpose(0, 1)
-        vt_lo_new = self._get_low_price_tensor_in_window(self.time_index + 1).transpose(
-            0, 1
+        ) = self._get_new_portfolio_weight_and_value(
+            action, time_index=state["time_index"]
         )
 
-        Xt_new = torch.stack((vt_new, vt_hi_new, vt_lo_new), dim=0)
-        w_new = new_portfolio_weight
-        Wt_1_new = torch.cat((torch.tensor([1.0]) - torch.sum(w_new), w_new), dim=0)
+        reward = torch.log(new_portfolio_value / state["previous_value"])
 
-        new_state = {
-            "Xt": Xt_new,
-            "Wt_1": Wt_1_new,
-        }
-
-        return new_state, reward, done
+        return reward
 
     def update(self, action_weight: torch.Tensor) -> None:
         """
@@ -135,7 +126,7 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         Args:
             action_weight (torch.Tensor): the action to perform, means the weight after trade
         """
-        action = BaseEnv._get_trading_size_according_to_weight_after_trade(
+        action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
             self, self.portfolio_weight, action_weight, self.portfolio_value
         )
         (

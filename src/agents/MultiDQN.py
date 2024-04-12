@@ -208,7 +208,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             progress_bar.close()
             self._update_target_network()
             logger.info(
-                f"Finish epoch {epoch+1}/{self.train_epochs}, epsilon: {self.epsilon:.5f}, portfolio value: {self.env.portfolio_value:.5f}"
+                f"Finish epoch {epoch+1}/{self.train_epochs}, portfolio value: {self.env.portfolio_value:.5f}"
             )
             save_path = os.path.join(self.model_save_path, f"Q_net_last_checkpoint.pth")
             logger.info(f"Saving model to {save_path}")

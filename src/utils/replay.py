@@ -50,6 +50,18 @@ class Replay:
             action="store_true",
             help="sample unique experiences",
         )
+        parser.add_argument(
+            "--replay_window",
+            type=int,
+            default=2000,
+            help="replay window size",
+        )
+        parser.add_argument(
+            "--train_batch_size",
+            type=int,
+            default=32,
+            help="batch size for training",
+        )
 
     def __init__(
         self,

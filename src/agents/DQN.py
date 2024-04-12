@@ -35,12 +35,6 @@ class DQN(BaseAgent[BaseEnv]):
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DQN, DQN).add_args(parser)
         parser.add_argument(
-            "--replay_window",
-            type=int,
-            default=2000,
-            help="replay window size",
-        )
-        parser.add_argument(
             "--DQN_gamma",
             type=float,
             default=0.9,
@@ -124,7 +118,7 @@ class DQN(BaseAgent[BaseEnv]):
 
     def train(self) -> None:
         """train the DQN agent"""
-        self.Q_network.train()
+        self.Q_network.eval()
         self.target_Q_network.eval()
         self.replay.reset()
         self.target_Q_network.load_state_dict(self.Q_network.state_dict())
@@ -157,7 +151,7 @@ class DQN(BaseAgent[BaseEnv]):
             progress_bar.close()
             self._update_target_network()
             logger.info(
-                f"Finish epoch {epoch+1}/{self.train_epochs}, epsilon: {self.epsilon:.5f}, portfolio value: {self.env.portfolio_value:.5f}"
+                f"Finish epoch {epoch+1}/{self.train_epochs}, portfolio value: {self.env.portfolio_value:.5f}"
             )
             save_path = os.path.join(self.model_save_path, f"Q_net_last_checkpoint.pth")
             logger.info(f"Saving model to {save_path}")
@@ -179,6 +173,7 @@ class DQN(BaseAgent[BaseEnv]):
             float: the training loss
         """
         self.Q_network.train()
+        self.train_optimizer.zero_grad()
         if not self.replay.has_enough_samples():
             return float("nan")
         experiences = self.replay.sample()
@@ -196,11 +191,8 @@ class DQN(BaseAgent[BaseEnv]):
                 target = reward + self.gamma * max_Q_value
             q_value = self.Q_network(state, action)
             loss += nn.functional.mse_loss(q_value, target)
-        if loss < self.loss_min:
-            self.loss_scale *= 2
         loss.backward()
         self.train_optimizer.step()
-        self.train_optimizer.zero_grad()
         self.Q_network.eval()
         return loss.item()
 

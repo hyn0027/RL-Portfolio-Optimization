@@ -1,5 +1,5 @@
 import argparse
-from typing import Dict, Tuple, List, Optional
+from typing import Dict, Tuple, List, Optional, Any
 from utils.logging import get_logger
 
 import torch
@@ -224,19 +224,14 @@ class BaseEnv:
         """
         raise NotImplementedError("get_state not implemented")
 
-    def act(
-        self, action: torch.tensor
-    ) -> Tuple[Dict[str, torch.tensor], torch.Tensor, bool]:
+    def act(self) -> Any:
         """update the environment with the given action at the given time, should be overridden by specific environments
-
-        Args:
-            action (torch.tensor): the action to take
 
         Raises:
             NotImplementedError: act not implemented
 
         Returns:
-            Tuple[Dict[str, torch.tensor], torch.Tensor, bool]: the new state, the reward, and whether the episode is done
+            Any: the result of the action
         """
         raise NotImplementedError("act not implemented")
 
@@ -385,7 +380,9 @@ class BaseEnv:
 
         return trading_size, mu
 
-    def _get_new_portfolio_weight_and_value(self, trading_size: torch.Tensor) -> Tuple[
+    def _get_new_portfolio_weight_and_value(
+        self, trading_size: torch.Tensor, time_index: Optional[int] = None
+    ) -> Tuple[
         torch.Tensor,
         torch.Tensor,
         torch.Tensor,
@@ -398,6 +395,7 @@ class BaseEnv:
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
+            time_index (Optional[int], optional): the time index. Defaults to None, which means the current time index.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -406,6 +404,9 @@ class BaseEnv:
                 the new portfolio value, the new portfolio value at the next day,
                 and the portfolio value at the next day with static weight
         """
+        if time_index is None:
+            time_index = self.time_index
+
         # get portfolio weight after trading
         new_portfolio_weight = (
             self.portfolio_weight + trading_size / self.portfolio_value
@@ -422,7 +423,7 @@ class BaseEnv:
 
         # changing to the next day
         # portfolio_value = value * (price change vec * portfolio_weight + rf_weight * (rf + 1))
-        price_change_rate = self._get_price_change_ratio_tensor(self.time_index + 1)
+        price_change_rate = self._get_price_change_ratio_tensor(time_index + 1)
         new_portfolio_value_next_day = new_portfolio_value * (
             torch.sum(price_change_rate * new_portfolio_weight)
             + new_rf_weight * (self.rf_return + 1.0)

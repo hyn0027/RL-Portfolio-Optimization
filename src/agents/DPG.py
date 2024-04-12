@@ -1,6 +1,7 @@
 import argparse
 from utils.logging import get_logger
 from typing import Optional
+from tqdm import tqdm
 
 from networks import registered_networks
 from utils.replay import Replay
@@ -76,3 +77,41 @@ class DPG(BaseAgent):
 
     def train(self) -> None:
         """train the DPG agent"""
+        self.model.eval()
+        self.replay.reset()
+        for epoch in range(self.train_epochs):
+            self.env.reset()
+            time_indices = self.env.train_time_range()
+            progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+            for _ in time_indices:
+                with torch.no_grad():
+                    state = self.env.get_state()
+                    action = self.model(state)
+                    self.env.update(action)
+                    self.replay.remember(state)
+                self._update_model()
+                progress_bar.update(1)
+            progress_bar.close()
+            logger.info(
+                f"Finish epoch {epoch + 1}/{self.train_epochs}, portfolio value: {self.env.portfolio_value:.5f}"
+            )
+
+    def _update_model(self) -> float:
+        """update the model"""
+        self.model.train()
+        self.train_optimizer.zero_grad()
+        if not self.replay.has_enough_samples():
+            return float("nan")
+        states = self.replay.sample()
+        loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
+        for state in states:
+            action = self.model(state)
+            reward = self.env.act(action, state)
+            loss += -reward
+        loss.backward()
+        self.train_optimizer.step()
+        self.model.eval()
+        return loss.item()
+
+    def test(self) -> None:
+        # TODO
