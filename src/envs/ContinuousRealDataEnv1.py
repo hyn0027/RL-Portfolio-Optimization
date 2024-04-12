@@ -34,6 +34,7 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         logger.info("Initializing ContinuousRealDataEnv1")
         super().__init__(args, data, device)
         self.previous_weight = self.portfolio_weight
+        self.previous_value = self.portfolio_value
         logger.info("ContinuousRealDataEnv1 initialized")
 
     def to(self, device: str) -> None:
@@ -71,8 +72,8 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         vt_lo = self._get_low_price_tensor_in_window(self.time_index).transpose(0, 1)
 
         Xt = torch.stack((vt, vt_hi, vt_lo), dim=0)
-        wt = self.previous_weight
-        Wt_1 = torch.cat((torch.tensor([1.0]) - torch.sum(wt), wt), dim=0)
+        w = self.previous_weight
+        Wt_1 = torch.cat((torch.tensor([1.0]) - torch.sum(w), w), dim=0)
 
         return {
             "Xt": Xt,
@@ -91,7 +92,7 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         Returns:
             Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]: the new state, reward, and whether the episode is done
         """
-        action = BaseEnv._get_trading_size_according_to_weight_after_trade(
+        action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
             self, self.portfolio_weight, action_weight, self.portfolio_value
         )
         (
@@ -100,12 +101,11 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
             new_rf_weight,
             new_rf_weight_next_day,
             new_portfolio_value,
+            new_portfolio_value_next_day,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)
 
-        reward = (
-            (new_portfolio_value - self.portfolio_value) / self.portfolio_value * 100
-        )
+        reward = torch.log(new_portfolio_value / self.previous_value)
 
         done = self.time_index == self.data.time_dimension() - 2
 
@@ -118,17 +118,15 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         )
 
         Xt_new = torch.stack((vt_new, vt_hi_new, vt_lo_new), dim=0)
-        Wt_1_new = torch.cat()
+        w_new = new_portfolio_weight
+        Wt_1_new = torch.cat((torch.tensor([1.0]) - torch.sum(w_new), w_new), dim=0)
 
-        return (
-            {
-                "Xt": Xt_new,
-                # TODO
-                "Portfolio_Weight_Today": new_portfolio_weight,
-            },
-            reward,
-            done,
-        )
+        new_state = {
+            "Xt": Xt_new,
+            "Wt_1": Wt_1_new,
+        }
+
+        return new_state, reward, done
 
     def update(self, action_weight: torch.Tensor) -> None:
         """
@@ -146,7 +144,9 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
             new_rf_weight,
             new_rf_weight_next_day,
             new_portfolio_value,
+            new_portfolio_value_next_day,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)
         BaseEnv.update(self, action)
         self.previous_weight = new_portfolio_weight
+        self.previous_value = new_portfolio_value

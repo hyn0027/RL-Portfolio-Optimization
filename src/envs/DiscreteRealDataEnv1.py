@@ -298,11 +298,12 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             new_rf_weight,
             new_rf_weight_next_day,
             new_portfolio_value,
+            new_portfolio_value_next_day,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)
 
         reward = (
-            (new_portfolio_value - static_portfolio_value)
+            (new_portfolio_value_next_day - static_portfolio_value)
             / static_portfolio_value
             * 100
         )
@@ -321,12 +322,13 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             "Portfolio_Weight_Today": new_portfolio_weight,
             "Portfolio_Weight_Without_rf": new_portfolio_weight_next_day,
             "rf_Weight": new_rf_weight_next_day,
-            "Portfolio_Value": new_portfolio_value,
+            "Portfolio_Value": new_portfolio_value_next_day,
         }
 
         return new_state, reward, done
 
     def _get_new_portfolio_weight_and_value(self, action: torch.Tensor) -> Tuple[
+        torch.Tensor,
         torch.Tensor,
         torch.Tensor,
         torch.Tensor,
@@ -342,7 +344,8 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
                 the new portfolio weight, the new portfolio weight at the next day,
-                the new risk free weight at the next day, the new portfolio value at the next day,
+                the new risk free weight, the new risk free weight at the next day,
+                the new portfolio value, the new portfolio value at the next day,
                 and the portfolio value at the next day with static weight
         """
 

@@ -99,11 +99,14 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
             new_rf_weight,
             new_rf_weight_next_day,
             new_portfolio_value,
+            new_portfolio_value_next_day,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)
 
         reward = (
-            (new_portfolio_value - self.portfolio_value) / self.portfolio_value * 100
+            (new_portfolio_value_next_day - self.portfolio_value)
+            / self.portfolio_value
+            * 100
         )
 
         done = self.time_index == self.data.time_dimension() - 2

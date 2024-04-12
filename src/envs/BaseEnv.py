@@ -60,6 +60,18 @@ class BaseEnv:
             default=0.0,
             help="the transaction cost base (bias) for each trading",
         )
+        parser.add_argument(
+            "--iteration_epsilon",
+            type=float,
+            default=1e-6,
+            help="the epsilon for the iteration",
+        )
+        parser.add_argument(
+            "--iteration_max_iter",
+            type=int,
+            default=100,
+            help="the maximum iteration number",
+        )
 
     def __init__(
         self,
@@ -98,6 +110,11 @@ class BaseEnv:
         self.transaction_cost_base = torch.tensor(
             args.transaction_cost_base, dtype=self.dtype, device=self.device
         )
+
+        self.iteration_epsilon = torch.tensor(
+            args.iteration_epsilon, dtype=torch.float32, device=self.device
+        )
+        self.iteration_max_iter: int = args.iteration_max_iter
 
         self.initialize_weight()
 
@@ -140,6 +157,7 @@ class BaseEnv:
             self.device
         )
         self.transaction_cost_base = self.transaction_cost_base.to(self.device)
+        self.iteration_epsilon = self.iteration_epsilon.to(self.device)
 
     def train_time_range(self) -> range:
         """the range of time indices, should be overridden by specific environments
@@ -236,7 +254,7 @@ class BaseEnv:
         Args:
             trading_size (torch.Tensor): the trading size of each asset
         """
-        _, self.portfolio_weight, _, self.rf_weight, self.portfolio_value, _ = (
+        _, self.portfolio_weight, _, self.rf_weight, _, self.portfolio_value, _ = (
             BaseEnv._get_new_portfolio_weight_and_value(self, trading_size)
         )
         self.time_index += 1
@@ -311,7 +329,7 @@ class BaseEnv:
         portfolio_weight_before_trade: torch.Tensor,
         portfolio_weight_after_trade: torch.Tensor,
         portfolio_value_before_trade: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """find the trading size according to the weight before and after trading (don't change day)
 
         Reference: https://arxiv.org/abs/1706.10059 (Section 2.3)
@@ -322,7 +340,7 @@ class BaseEnv:
             portfolio_value_before_trade (torch.Tensor): the portfolio value before trading
 
         Returns:
-            torch.Tensor: the trading size
+            Tuple[torch.Tensor, torch.Tensor]: the trading size and the mu
         """
         rf_weight_before_trade = 1 - torch.sum(portfolio_weight_before_trade)
         rf_weight_after_trade = 1 - torch.sum(portfolio_weight_after_trade)
@@ -353,8 +371,8 @@ class BaseEnv:
         )
         prev_mu = torch.tensor(float("inf"), dtype=self.dtype, device=self.device)
 
-        threshold = 1e-6
-        max_iter = 100
+        threshold = self.iteration_epsilon
+        max_iter = self.iteration_max_iter
 
         while torch.abs(mu - prev_mu) > threshold and max_iter > 0:
             prev_mu = mu
@@ -365,9 +383,10 @@ class BaseEnv:
             portfolio_weight_after_trade * mu - portfolio_weight_before_trade
         )
 
-        return trading_size
+        return trading_size, mu
 
     def _get_new_portfolio_weight_and_value(self, trading_size: torch.Tensor) -> Tuple[
+        torch.Tensor,
         torch.Tensor,
         torch.Tensor,
         torch.Tensor,
@@ -384,7 +403,7 @@ class BaseEnv:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
                 the new portfolio weight, the new portfolio weight at the next day,
                 the new risk free weight, the new risk free weight at the next day,
-                the new portfolio value at the next day,
+                the new portfolio value, the new portfolio value at the next day,
                 and the portfolio value at the next day with static weight
         """
         # get portfolio weight after trading
@@ -428,6 +447,7 @@ class BaseEnv:
             new_portfolio_weight_next_day,
             new_rf_weight,
             new_rf_weight_next_day,
+            new_portfolio_value,
             new_portfolio_value_next_day,
             static_portfolio_value,
         )
