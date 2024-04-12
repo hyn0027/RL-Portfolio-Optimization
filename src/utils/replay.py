@@ -12,6 +12,45 @@ logger = get_logger("Replay")
 class Replay:
     """The replay memory"""
 
+    @staticmethod
+    def add_args(parser: argparse.ArgumentParser) -> None:
+        """add arguments to the parser
+
+            to add arguments to the parser, modify the method as follows:
+
+            .. code-block:: python
+
+                @staticmethod
+                def add_args(parser: argparse.ArgumentParser) -> None:
+                    parser.add_argument(
+                        ...
+                    )
+
+
+            then add arguments to the parser
+
+        Args:
+            parser (argparse.ArgumentParser): the parser to add arguments to
+        """
+        parser.add_argument(
+            "--replay_sample_distribution",
+            type=str,
+            choices=["uniform", "geometric"],
+            default="uniform",
+            help="replay sample distribution",
+        )
+        parser.add_argument(
+            "--replay_sample_geometric_p",
+            type=float,
+            default=0.5,
+            help="geometric distribution parameter",
+        )
+        parser.add_argument(
+            "--replay_sample_unique",
+            action="store_true",
+            help="sample unique experiences",
+        )
+
     def __init__(
         self,
         args: argparse.Namespace,

@@ -6,6 +6,7 @@ from agents import registered_agents
 from envs import registered_envs
 from networks import registered_networks
 from utils.data import load_data_object
+from utils.replay import Replay
 from evaluate.evaluator import Evaluator
 
 logger = get_logger("train")
@@ -267,6 +268,7 @@ def parse_args() -> argparse.Namespace:
     )
 
     Evaluator.add_args(parser)
+    Replay.add_args(parser)
 
     args, _ = parser.parse_known_args()
 
