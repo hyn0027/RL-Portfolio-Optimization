@@ -56,8 +56,10 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
         Returns:
             Dict[str, torch.Tensor]: the state tensors
         """
+        price = self._get_price_tensor_in_window(self.time_index).transpose(0, 1)
+        price = price.unsqueeze(0)
         return {
-            "price": self._get_price_tensor_in_window(self.time_index),
+            "price": price,
             "time_index": self.time_index,
             "portfolio_value": self.portfolio_value,
         }
@@ -82,11 +84,7 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action, state["time_index"])
 
-        reward = (
-            (new_portfolio_value_next_day - state["portfolio_value"])
-            / state["portfolio_value"]
-            * 100
-        )
+        reward = torch.log(new_portfolio_value_next_day / state["portfolio_value"])
 
         new_state = {
             "Portfolio_Weight_Today": new_portfolio_weight,
