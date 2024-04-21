@@ -14,7 +14,7 @@ logger = get_logger("PolicyCNN")
 @register_network("PolicyCNN")
 class PolicyCNN(nn.Module):
     """
-    The ValueDNN model
+    The ValueCNN model
 
     Reference:
         original paper: https://arxiv.org/abs/1706.10059
@@ -40,7 +40,12 @@ class PolicyCNN(nn.Module):
         Args:
             parser (argparse.ArgumentParser): the parser to add arguments to
         """
-        pass
+        parser.add_argument(
+            "--feature_num",
+            type=int,
+            default=3,
+            help="number of features",
+        )
 
     def __init__(self, args: argparse.Namespace) -> None:
         """initialize the PolicyCNN model
@@ -49,7 +54,7 @@ class PolicyCNN(nn.Module):
             args (argparse.Namespace): the arguments
         """
         super().__init__()
-        self.layer1 = nn.Conv2d(3, 2, (1, 3))
+        self.layer1 = nn.Conv2d(args.feature_num, 2, (1, 3))
         self.relu1 = nn.ReLU()
         self.layer2 = nn.Conv2d(2, 20, (1, args.window_size - 2))
         self.relu2 = nn.ReLU()

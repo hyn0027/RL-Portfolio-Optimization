@@ -80,3 +80,18 @@ python3 run.py \
     --window_size 50 \
     --mode train \
     --initial_balance 1000000
+
+python3 run.py \
+    --agent DPG \
+    --env ContinuousRealDataEnv1 \
+    --network PolicyCNN \
+    --asset_codes NVDA GOOGL MSFT AMZN \
+    --start_date 2023-01-01 \
+    --end_date 2024-01-01 \
+    --interval 1d \
+    --annual_sample 252 \
+    --device cpu \
+    --window_size 50 \
+    --mode test \
+    --initial_balance 1000000 \
+    --model_load_path  ../model/model_last_checkpoint.pth

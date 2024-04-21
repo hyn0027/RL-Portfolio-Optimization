@@ -117,7 +117,13 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
 
         reward = torch.log(new_portfolio_value / state["previous_value"])
 
-        return reward
+        new_state = {
+            "Portfolio_Weight_Today": new_portfolio_weight,
+        }
+
+        done = self.time_index == self.data.time_dimension() - 2
+
+        return new_state, reward, done
 
     def update(self, action_weight: torch.Tensor) -> None:
         """

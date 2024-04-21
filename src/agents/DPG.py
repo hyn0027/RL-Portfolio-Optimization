@@ -2,6 +2,7 @@ import argparse
 from utils.logging import get_logger
 from typing import Optional
 from tqdm import tqdm
+import os
 
 from networks import registered_networks
 from utils.replay import Replay
@@ -95,6 +96,13 @@ class DPG(BaseAgent):
             logger.info(
                 f"Finish epoch {epoch + 1}/{self.train_epochs}, portfolio value: {self.env.portfolio_value:.5f}"
             )
+            save_path = os.path.join(self.model_save_path, f"model_last_checkpoint.pth")
+            logger.info(f"Saving model to {save_path}")
+            torch.save(
+                self.model.state_dict(),
+                save_path,
+            )
+            logger.info(f"Model saved to {save_path}")
 
     def _update_model(self) -> float:
         """update the model"""
@@ -106,7 +114,7 @@ class DPG(BaseAgent):
         loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         for state in states:
             action = self.model(state)
-            reward = self.env.act(action, state)
+            _, reward, _ = self.env.act(action, state)
             loss += -reward
         loss.backward()
         self.train_optimizer.step()
@@ -114,4 +122,21 @@ class DPG(BaseAgent):
         return loss.item()
 
     def test(self) -> None:
-        # TODO
+        self.env.reset()
+        time_indices = self.env.test_time_range()
+        progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+        for _ in time_indices:
+            state = self.env.get_state()
+            action = self.model(state)
+            new_state, _, _ = self.env.act(action, state)
+            portfolio_value = self.env.portfolio_value.item()
+            portfolio_weight_before_trade = self.env.portfolio_weight
+            portfolio_weight_after_trade = new_state["Portfolio_Weight_Today"]
+            self.evaluator.push(
+                portfolio_value,
+                (portfolio_weight_before_trade, portfolio_weight_after_trade),
+            )
+            self.env.update(action)
+            progress_bar.update(1)
+        progress_bar.close()
+        self.evaluator.evaluate()

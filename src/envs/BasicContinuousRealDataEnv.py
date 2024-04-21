@@ -1,5 +1,5 @@
 import argparse
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, List
 
 from utils.data import Data
 from utils.logging import get_logger
@@ -32,6 +32,22 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
     def to(self, device: str) -> None:
         super().to(device)
 
+    def state_dimension(self) -> Dict[str, torch.Size]:
+        """the dimension of the state tensors.
+
+        Returns:
+            Dict[str, torch.Size]: the dimension of the state tensors
+        """
+        return {"price": torch.Size([self.window_size, self.asset_num])}
+
+    def state_tensor_names(self) -> List[str]:
+        """the names of the state tensors
+
+        Returns:
+            List[str]: the names of the state tensors
+        """
+        return ["price"]
+
     def get_state(
         self,
     ) -> Optional[Dict[str, torch.Tensor]]:
@@ -46,7 +62,7 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             "portfolio_value": self.portfolio_value,
         }
 
-    def act(self, action_weight: torch.Tensor, state: Dict) -> torch.Tensor:
+    def act(self, action: torch.Tensor, state: Dict) -> torch.Tensor:
         """
         perform an action (the trading size)
 
@@ -64,7 +80,7 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             new_portfolio_value,
             new_portfolio_value_next_day,
             static_portfolio_value,
-        ) = self._get_new_portfolio_weight_and_value(action_weight, state["time_index"])
+        ) = self._get_new_portfolio_weight_and_value(action, state["time_index"])
 
         reward = (
             (new_portfolio_value_next_day - state["portfolio_value"])
@@ -72,7 +88,12 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             * 100
         )
 
-        return reward
+        new_state = {
+            "Portfolio_Weight_Today": new_portfolio_weight,
+        }
+        done = self.time_index == self.data.time_dimension() - 2
+
+        return new_state, reward, done
 
     def update(self, action: torch.Tensor) -> None:
         """
