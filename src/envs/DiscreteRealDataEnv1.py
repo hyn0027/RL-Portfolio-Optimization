@@ -323,6 +323,7 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             "Portfolio_Weight_Without_rf": new_portfolio_weight_next_day,
             "rf_Weight": new_rf_weight_next_day,
             "Portfolio_Value": new_portfolio_value_next_day,
+            "Current_price": self._get_price_tensor(self.time_index),
         }
 
         return new_state, reward, done

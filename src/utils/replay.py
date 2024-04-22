@@ -42,7 +42,7 @@ class Replay:
         parser.add_argument(
             "--replay_sample_geometric_p",
             type=float,
-            default=0.5,
+            default=5e-5,
             help="geometric distribution parameter",
         )
         parser.add_argument(

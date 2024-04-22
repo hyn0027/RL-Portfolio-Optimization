@@ -14,10 +14,7 @@ logger = get_logger("PolicyCNN")
 @register_network("PolicyCNN")
 class PolicyCNN(nn.Module):
     """
-    The ValueCNN model
-
-    Reference:
-        original paper: https://arxiv.org/abs/1706.10059
+    The PolicyCNN model
     """
 
     @staticmethod

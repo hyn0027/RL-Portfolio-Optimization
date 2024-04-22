@@ -135,6 +135,7 @@ class DPG(BaseAgent):
             self.evaluator.push(
                 portfolio_value,
                 (portfolio_weight_before_trade, portfolio_weight_after_trade),
+                new_state["Current_price"],
             )
             self.env.update(action)
             progress_bar.update(1)

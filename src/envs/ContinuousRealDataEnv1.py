@@ -119,6 +119,7 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
 
         new_state = {
             "Portfolio_Weight_Today": new_portfolio_weight,
+            "Current_price": self._get_price_tensor(state["time_index"]),
         }
 
         done = self.time_index == self.data.time_dimension() - 2

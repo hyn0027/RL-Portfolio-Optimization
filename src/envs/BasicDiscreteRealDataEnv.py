@@ -114,6 +114,7 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         new_state = {
             "price": (self._get_price_tensor_in_window(self.time_index + 1)),
             "Portfolio_Weight_Today": new_portfolio_weight,
+            "Current_price": self._get_price_tensor(self.time_index),
         }
 
         return new_state, reward, done

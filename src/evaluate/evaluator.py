@@ -82,6 +82,7 @@ class Evaluator:
         self.portfolio_weight_list = []
         self.return_rate = []
         self.previous_portfolio_weight = args.initial_balance
+        self.asset_prices = []
         logger.info("Evaluator initialized")
 
     def reset(self, initial_balance: float) -> None:
@@ -93,18 +94,22 @@ class Evaluator:
         logger.info("Resetting Evaluator")
         self.portfolio_value_list = []
         self.portfolio_weight_list = []
+        self.return_rate = []
         self.previous_portfolio_weight = initial_balance
+        self.asset_prices = []
 
     def push(
         self,
         portfolio_value: float,
         portfolio_weight: Tuple[torch.Tensor, torch.Tensor],
+        current_price: torch.Tensor,
     ) -> None:
         """push the portfolio value and weight to the evaluator
 
         Args:
             portfolio_value (float): the portfolio value
-            portfolio_weight (float): the portfolio weight
+            portfolio_weight (Tuple[torch.Tensor, torch.Tensor]): the portfolio weight before and after trading
+            current_price (torch.Tensor): the current price of the considered assets
         """
         self.portfolio_value_list.append(portfolio_value)
         self.portfolio_weight_list.append(portfolio_weight)
@@ -113,6 +118,7 @@ class Evaluator:
             / self.previous_portfolio_weight
         )
         self.previous_portfolio_weight = portfolio_value
+        self.asset_prices.append(current_price)
 
     def evaluate(
         self,
