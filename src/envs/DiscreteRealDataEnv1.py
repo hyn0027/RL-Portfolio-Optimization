@@ -16,6 +16,11 @@ logger = get_logger("DiscreteRealDataEnv1")
 
 @register_env("DiscreteRealDataEnv1")
 class DiscreteRealDataEnv1(BasicRealDataEnv):
+    """
+    Reference:
+        original paper: https://arxiv.org/abs/1907.03665
+    """
+
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DiscreteRealDataEnv1, DiscreteRealDataEnv1).add_args(parser)
@@ -291,12 +296,14 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
             new_portfolio_weight,
             new_portfolio_weight_next_day,
             new_rf_weight,
+            new_rf_weight_next_day,
             new_portfolio_value,
+            new_portfolio_value_next_day,
             static_portfolio_value,
         ) = self._get_new_portfolio_weight_and_value(action)
 
         reward = (
-            (new_portfolio_value - static_portfolio_value)
+            (new_portfolio_value_next_day - static_portfolio_value)
             / static_portfolio_value
             * 100
         )
@@ -310,19 +317,25 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
                 else None
             ),
             "Portfolio_Weight": self._concat_weight(
-                new_portfolio_weight_next_day, new_rf_weight
+                new_portfolio_weight_next_day, new_rf_weight_next_day
             ),
             "Portfolio_Weight_Today": new_portfolio_weight,
             "Portfolio_Weight_Without_rf": new_portfolio_weight_next_day,
-            "rf_Weight": new_rf_weight,
-            "Portfolio_Value": new_portfolio_value,
+            "rf_Weight": new_rf_weight_next_day,
+            "Portfolio_Value": new_portfolio_value_next_day,
         }
 
         return new_state, reward, done
 
-    def _get_new_portfolio_weight_and_value(
-        self, action: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _get_new_portfolio_weight_and_value(self, action: torch.Tensor) -> Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
         """get the new portfolio weight and value after trading and transitioning to the next day
 
         Args:
@@ -331,7 +344,8 @@ class DiscreteRealDataEnv1(BasicRealDataEnv):
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
                 the new portfolio weight, the new portfolio weight at the next day,
-                the new risk free weight at the next day, the new portfolio value at the next day,
+                the new risk free weight, the new risk free weight at the next day,
+                the new portfolio value, the new portfolio value at the next day,
                 and the portfolio value at the next day with static weight
         """
 

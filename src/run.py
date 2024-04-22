@@ -6,6 +6,7 @@ from agents import registered_agents
 from envs import registered_envs
 from networks import registered_networks
 from utils.data import load_data_object
+from utils.replay import Replay
 from evaluate.evaluator import Evaluator
 
 logger = get_logger("train")
@@ -45,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--network",
         type=str,
-        default="MultiDQN_LSTM",
+        default="MultiValueLSTM",
         choices=registered_networks.keys(),
         help="Name of the network to use",
     )
@@ -267,6 +268,7 @@ def parse_args() -> argparse.Namespace:
     )
 
     Evaluator.add_args(parser)
+    Replay.add_args(parser)
 
     args, _ = parser.parse_known_args()
 
@@ -311,7 +313,7 @@ def main() -> None:
         args.reload_data,
     )
     data.uniform_time(args.time_zone)
-    
+
     args.asset_num = len(args.asset_codes)
 
     # set up environment

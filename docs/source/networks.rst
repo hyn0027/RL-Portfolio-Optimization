@@ -9,18 +9,18 @@ networks package
 Submodules
 ----------
 
-networks.DQN\_DNN module
-------------------------
+networks.MultiDiscreteLSTM module
+---------------------------------
 
-.. automodule:: networks.DQN_DNN
+.. automodule:: networks.MultiDiscreteLSTM
    :members:
    :undoc-members:
    :show-inheritance:
 
-networks.MultiDQN\_LSTM module
+networks.MultiValueLSTM module
 ------------------------------
 
-.. automodule:: networks.MultiDQN_LSTM
+.. automodule:: networks.MultiValueLSTM
    :members:
    :undoc-members:
    :show-inheritance:

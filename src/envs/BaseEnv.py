@@ -1,5 +1,5 @@
 import argparse
-from typing import Dict, Tuple, List, Optional
+from typing import Dict, Tuple, List, Optional, Any
 from utils.logging import get_logger
 
 import torch
@@ -43,16 +43,34 @@ class BaseEnv:
             help="risk free return (per time index)",
         )
         parser.add_argument(
-            "--transaction_cost_rate",
+            "--transaction_cost_rate_buy",
             type=float,
             default=0.0025,
-            help="the transaction cost rate for each trading",
+            help="the transaction cost rate for each buy action",
+        )
+        parser.add_argument(
+            "--transaction_cost_rate_sell",
+            type=float,
+            default=0.0025,
+            help="the transaction cost rate for each sell action",
         )
         parser.add_argument(
             "--transaction_cost_base",
             type=float,
             default=0.0,
             help="the transaction cost base (bias) for each trading",
+        )
+        parser.add_argument(
+            "--iteration_epsilon",
+            type=float,
+            default=1e-6,
+            help="the epsilon for the iteration",
+        )
+        parser.add_argument(
+            "--iteration_max_iter",
+            type=int,
+            default=100,
+            help="the maximum iteration number",
         )
 
     def __init__(
@@ -76,18 +94,27 @@ class BaseEnv:
         )
         self.fp16: bool = args.fp16
         self.dtype = torch.float16 if args.fp16 else torch.float32
-        self.time_index = 0
+        self.time_index = self.window_size - 1
 
         self.rf_return = torch.tensor(
             args.risk_free_return, dtype=self.dtype, device=self.device
         )
 
-        self.transaction_cost_rate = torch.tensor(
-            args.transaction_cost_rate, dtype=self.dtype, device=self.device
+        self.transaction_cost_rate_buy = torch.tensor(
+            args.transaction_cost_rate_buy, dtype=self.dtype, device=self.device
+        )
+
+        self.transaction_cost_rate_sell = torch.tensor(
+            args.transaction_cost_rate_sell, dtype=self.dtype, device=self.device
         )
         self.transaction_cost_base = torch.tensor(
             args.transaction_cost_base, dtype=self.dtype, device=self.device
         )
+
+        self.iteration_epsilon = torch.tensor(
+            args.iteration_epsilon, dtype=torch.float32, device=self.device
+        )
+        self.iteration_max_iter: int = args.iteration_max_iter
 
         self.initialize_weight()
 
@@ -125,8 +152,12 @@ class BaseEnv:
         self.portfolio_value = self.portfolio_value.to(self.device)
         self.portfolio_weight = self.portfolio_weight.to(self.device)
         self.rf_weight = self.rf_weight.to(self.device)
-        self.transaction_cost_rate = self.transaction_cost_rate.to(self.device)
+        self.transaction_cost_rate_buy = self.transaction_cost_rate_buy.to(self.device)
+        self.transaction_cost_rate_sell = self.transaction_cost_rate_sell.to(
+            self.device
+        )
         self.transaction_cost_base = self.transaction_cost_base.to(self.device)
+        self.iteration_epsilon = self.iteration_epsilon.to(self.device)
 
     def train_time_range(self) -> range:
         """the range of time indices, should be overridden by specific environments
@@ -193,19 +224,14 @@ class BaseEnv:
         """
         raise NotImplementedError("get_state not implemented")
 
-    def act(
-        self, action: torch.tensor
-    ) -> Tuple[Dict[str, torch.tensor], torch.Tensor, bool]:
+    def act(self) -> Any:
         """update the environment with the given action at the given time, should be overridden by specific environments
-
-        Args:
-            action (torch.tensor): the action to take
 
         Raises:
             NotImplementedError: act not implemented
 
         Returns:
-            Tuple[Dict[str, torch.tensor], torch.Tensor, bool]: the new state, the reward, and whether the episode is done
+            Any: the result of the action
         """
         raise NotImplementedError("act not implemented")
 
@@ -223,7 +249,7 @@ class BaseEnv:
         Args:
             trading_size (torch.Tensor): the trading size of each asset
         """
-        _, self.portfolio_weight, self.rf_weight, self.portfolio_value, _ = (
+        _, self.portfolio_weight, _, self.rf_weight, _, self.portfolio_value, _ = (
             BaseEnv._get_new_portfolio_weight_and_value(self, trading_size)
         )
         self.time_index += 1
@@ -265,7 +291,9 @@ class BaseEnv:
 
         .. code-block:: python
 
-                transaction_cost = sum(abs(trading_size)) * transaction_cost_rate + count(trading_size != 0) * transaction_cost_base
+                transaction_cost = sum(abs(trading_size) for trading_size > 0) * transaction_cost_rate_buy
+                                 + sum(abs(trading_size) for trading_size < 0) * transaction_cost_rate_sell
+                                 + count(trading_size != 0) * transaction_cost_base
 
 
         Args:
@@ -274,25 +302,111 @@ class BaseEnv:
         Returns:
             torch.Tensor: the transaction cost
         """
-        return (
-            torch.sum(torch.abs(trading_size)) * self.transaction_cost_rate
-            + torch.nonzero(trading_size).size(0) * self.transaction_cost_base
+        buy_trading_size = torch.clamp(trading_size, min=0)
+        sell_trading_size = torch.clamp(trading_size, max=0)
+
+        buy_cost = (
+            torch.sum(torch.abs(buy_trading_size)) * self.transaction_cost_rate_buy
+            + torch.nonzero(buy_trading_size).size(0) * self.transaction_cost_base
+        )
+        rate_sell = self.transaction_cost_rate_sell / (
+            1 + self.transaction_cost_rate_sell
+        )
+        sell_cost = (
+            torch.sum(torch.abs(sell_trading_size)) * rate_sell
+            + torch.nonzero(sell_trading_size).size(0) * self.transaction_cost_base
         )
 
+        return buy_cost + sell_cost
+
+    def _get_trading_size_according_to_weight_after_trade(
+        self,
+        portfolio_weight_before_trade: torch.Tensor,
+        portfolio_weight_after_trade: torch.Tensor,
+        portfolio_value_before_trade: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """find the trading size according to the weight before and after trading (don't change day)
+
+        Reference: https://arxiv.org/abs/1706.10059 (Section 2.3)
+
+        Args:
+            portfolio_weight_before_trade (torch.Tensor): the weight before trading
+            portfolio_weight_after_trade (torch.Tensor): the weight after trading
+            portfolio_value_before_trade (torch.Tensor): the portfolio value before trading
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: the trading size and the mu
+        """
+        rf_weight_before_trade = 1 - torch.sum(portfolio_weight_before_trade)
+        rf_weight_after_trade = 1 - torch.sum(portfolio_weight_after_trade)
+        cp = self.transaction_cost_rate_buy
+        cs = self.transaction_cost_rate_sell
+
+        def f(mu: torch.Tensor) -> torch.Tensor:
+            factor = 1 / (1 - cp * rf_weight_after_trade)
+            total = (
+                1
+                - cp * rf_weight_before_trade
+                - (cs + cp - cs * cp)
+                * torch.sum(
+                    torch.relu(
+                        portfolio_weight_before_trade
+                        - mu * portfolio_weight_after_trade
+                    )
+                )
+            )
+            return factor * total
+
+        mu = (
+            (cp + cs)
+            / 2
+            * torch.sum(
+                torch.abs(portfolio_weight_after_trade - portfolio_weight_before_trade)
+            )
+        )
+        prev_mu = torch.tensor(float("inf"), dtype=self.dtype, device=self.device)
+
+        threshold = self.iteration_epsilon
+        max_iter = self.iteration_max_iter
+
+        while torch.abs(mu - prev_mu) > threshold and max_iter > 0:
+            prev_mu = mu
+            mu = f(mu)
+            max_iter -= 1
+
+        trading_size = portfolio_value_before_trade * (
+            portfolio_weight_after_trade * mu - portfolio_weight_before_trade
+        )
+
+        return trading_size, mu
+
     def _get_new_portfolio_weight_and_value(
-        self, trading_size: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        self, trading_size: torch.Tensor, time_index: Optional[int] = None
+    ) -> Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
         """get the new portfolio weight and value after trading and transitioning to the next day
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
+            time_index (Optional[int], optional): the time index. Defaults to None, which means the current time index.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
                 the new portfolio weight, the new portfolio weight at the next day,
-                the new risk free weight at the next day, the new portfolio value at the next day,
+                the new risk free weight, the new risk free weight at the next day,
+                the new portfolio value, the new portfolio value at the next day,
                 and the portfolio value at the next day with static weight
         """
+        if time_index is None:
+            time_index = self.time_index
+
         # get portfolio weight after trading
         new_portfolio_weight = (
             self.portfolio_weight + trading_size / self.portfolio_value
@@ -309,7 +423,7 @@ class BaseEnv:
 
         # changing to the next day
         # portfolio_value = value * (price change vec * portfolio_weight + rf_weight * (rf + 1))
-        price_change_rate = self._get_price_change_ratio_tensor(self.time_index + 1)
+        price_change_rate = self._get_price_change_ratio_tensor(time_index + 1)
         new_portfolio_value_next_day = new_portfolio_value * (
             torch.sum(price_change_rate * new_portfolio_weight)
             + new_rf_weight * (self.rf_return + 1.0)
@@ -332,7 +446,9 @@ class BaseEnv:
         return (
             new_portfolio_weight,
             new_portfolio_weight_next_day,
+            new_rf_weight,
             new_rf_weight_next_day,
+            new_portfolio_value,
             new_portfolio_value_next_day,
             static_portfolio_value,
         )

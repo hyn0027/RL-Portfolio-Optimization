@@ -1,11 +1,8 @@
 import argparse
-from typing import List, Optional, Dict, Tuple
-from itertools import product
-import random
+from typing import List, Optional, Dict
 
 from utils.data import Data
 from utils.logging import get_logger
-from envs import register_env
 from envs.BaseEnv import BaseEnv
 
 import torch
@@ -13,7 +10,6 @@ import torch
 logger = get_logger("BasicRealDataEnv")
 
 
-@register_env("BasicRealDataEnv")
 class BasicRealDataEnv(BaseEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
@@ -41,17 +37,39 @@ class BasicRealDataEnv(BaseEnv):
         super().__init__(args, device)
 
         price_list = []
+        open_price_list = []
+        high_price_list = []
+        low_price_list = []
+
         for time_index in range(0, self.data.time_dimension()):
             new_price = []
+            open_price = []
+            high_price = []
+            low_price = []
             for asset_code in self.asset_codes:
                 asset_data = self.data.get_asset_hist_at_time(
                     asset_code, self.data.time_list[time_index]
                 )
                 new_price.append(asset_data["Close"])
+                open_price.append(asset_data["Open"])
+                high_price.append(asset_data["High"])
+                low_price.append(asset_data["Low"])
             price_list.append(
                 torch.tensor(new_price, dtype=self.dtype, device=self.device)
             )
+            open_price_list.append(
+                torch.tensor(open_price, dtype=self.dtype, device=self.device)
+            )
+            high_price_list.append(
+                torch.tensor(high_price, dtype=self.dtype, device=self.device)
+            )
+            low_price_list.append(
+                torch.tensor(low_price, dtype=self.dtype, device=self.device)
+            )
         self.price_matrix = torch.stack(price_list, dim=1)
+        self.open_price_matrix = torch.stack(open_price_list, dim=1)
+        self.high_price_matrix = torch.stack(high_price_list, dim=1)
+        self.low_price_matrix = torch.stack(low_price_list, dim=1)
         self.price_change_matrix = self.price_matrix[:, 1:] / self.price_matrix[:, :-1]
 
         logger.info("BasicRealDataEnv initialized")
@@ -64,6 +82,9 @@ class BasicRealDataEnv(BaseEnv):
         """
         super().to(device)
         self.price_matrix = self.price_matrix.to(self.device)
+        self.open_price_matrix = self.open_price_matrix.to(self.device)
+        self.high_price_matrix = self.high_price_matrix.to(self.device)
+        self.low_price_matrix = self.low_price_matrix.to(self.device)
         self.price_change_matrix = self.price_change_matrix.to(self.device)
 
     def get_asset_num(self) -> int:
@@ -80,7 +101,7 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             range: the range of time indices
         """
-        return range(0, self.data.time_dimension() - 1)
+        return range(self.window_size - 1, self.data.time_dimension() - 1)
 
     def test_time_range(self) -> range:
         """the range of time indices
@@ -88,11 +109,11 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             range: the range of time indices
         """
-        return range(0, self.data.time_dimension() - 1)
+        return range(self.window_size - 1, self.data.time_dimension() - 1)
 
     def _get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
-    ) -> torch.tensor:
+    ) -> torch.Tensor:
         """get the price change ratio tensor at a given time
 
         Args:
@@ -101,13 +122,13 @@ class BasicRealDataEnv(BaseEnv):
                 Defaults to None, which means to get the price change ratio at the current time.
 
         Returns:
-            torch.tensor: the price change ratio tensor
+            torch.Tensor: the price change ratio tensor
         """
         if time_index is None:
             time_index = self.time_index
         return self.price_change_matrix[:, time_index - 1]
 
-    def _get_price_tensor(self, time_index: Optional[int] = None) -> torch.tensor:
+    def _get_price_tensor(self, time_index: Optional[int] = None) -> torch.Tensor:
         """get the price tensor at a given time
 
         Args:
@@ -116,13 +137,13 @@ class BasicRealDataEnv(BaseEnv):
                 Defaults to None, which means to get the price at the current time.
 
         Returns:
-            torch.tensor: the price tensor
+            torch.Tensor: the price tensor
         """
         if time_index is None:
             time_index = self.time_index
         return self.price_matrix[:, time_index]
 
-    def _get_price_tensor_in_window(self, time_index: int) -> torch.tensor:
+    def _get_price_tensor_in_window(self, time_index: int) -> torch.Tensor:
         """get the price tensor in a window centered at a given time
 
         Args:
@@ -130,9 +151,55 @@ class BasicRealDataEnv(BaseEnv):
             window_size (int): the window size
 
         Returns:
-            torch.tensor: the price tensor in the window
+            torch.Tensor: the price tensor in the window
         """
-        # return self.price_matrix[:, time_index - self.window_size + 1 : time_index + 1]
+        return self._get_tensor_in_window(self.price_matrix, time_index)
+
+    def _get_high_price_tensor_in_window(self, time_index: int) -> torch.Tensor:
+        """get the high price tensor in a window centered at a given time
+
+        Args:
+            time_index (int): the time index to get the high price
+
+        Returns:
+            torch.Tensor: the high price tensor in the window
+        """
+        return self._get_tensor_in_window(self.high_price_matrix, time_index)
+
+    def _get_low_price_tensor_in_window(self, time_index: int) -> torch.Tensor:
+        """get the low price tensor in a window centered at a given time
+
+        Args:
+            time_index (int): the time index to get the low price
+
+        Returns:
+            torch.Tensor: the low price tensor in the window
+        """
+        return self._get_tensor_in_window(self.low_price_matrix, time_index)
+
+    def _get_open_price_tensor_in_window(self, time_index: int) -> torch.Tensor:
+        """get the open price tensor in a window centered at a given time
+
+        Args:
+            time_index (int): the time index to get the open price
+
+        Returns:
+            torch.Tensor: the open price tensor in the window
+        """
+        return self._get_tensor_in_window(self.open_price_matrix, time_index)
+
+    def _get_tensor_in_window(
+        self, tensor: torch.Tensor, time_index: int
+    ) -> torch.Tensor:
+        """get the tensor in a window centered at a given time
+
+        Args:
+            tensor (torch.Tensor): the tensor
+            time_index (int): the time index to get the tensor
+
+        Returns:
+            torch.Tensor: the tensor in the window
+        """
         start_index = time_index - self.window_size + 1
         if start_index < 0:
             padding = -start_index
@@ -140,9 +207,9 @@ class BasicRealDataEnv(BaseEnv):
         else:
             padding = 0
 
-        slice = self.price_matrix[:, start_index : time_index + 1]
+        slice = tensor[:, start_index : time_index + 1]
         if padding > 0:
-            padding_tensor = self.price_matrix[:, 0].unsqueeze(1).repeat(1, padding)
+            padding_tensor = tensor[:, 0].unsqueeze(1).repeat(1, padding)
             slice = torch.cat((padding_tensor, slice), dim=1)
         return slice
 
@@ -170,7 +237,7 @@ class BasicRealDataEnv(BaseEnv):
         """get the state tensors at the current time.
 
         Returns:
-            Dict[str, torch.tensor]: the state tensors
+            Dict[str, torch.Tensor]: the state tensors
         """
         return {
             "price": self._get_price_tensor_in_window(self.time_index),
@@ -179,5 +246,5 @@ class BasicRealDataEnv(BaseEnv):
     def reset(self) -> None:
         """reset the environment."""
         logger.info("Resetting BasicRealDataEnv")
-        self.time_index = 0
+        self.time_index = self.window_size - 1
         BaseEnv.initialize_weight(self)

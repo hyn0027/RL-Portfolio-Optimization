@@ -8,12 +8,17 @@ from networks import register_network
 import torch
 import torch.nn as nn
 
-logger = get_logger("DQN_DNN")
+logger = get_logger("ValueDNN")
 
 
-@register_network("DQN_DNN")
-class DQN_DNN(nn.Module):
-    """The DQN_DNN model"""
+@register_network("ValueDNN")
+class ValueDNN(nn.Module):
+    """
+    The ValueDNN model
+
+    Reference:
+        original paper: https://arxiv.org/abs/1907.03665
+    """
 
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
@@ -49,7 +54,7 @@ class DQN_DNN(nn.Module):
         )
 
     def __init__(self, args: argparse.Namespace) -> None:
-        """initialize the DQN_DNN model
+        """initialize the ValueDNN model
 
         Args:
             args (argparse.Namespace): the arguments
