@@ -53,6 +53,11 @@ class Evaluator:
             help="Disable the AT metric",
         )
         parser.add_argument(
+            "--disable_MDD",
+            action="store_true",
+            help="Disable the MDD metric",
+        )
+        parser.add_argument(
             "--annual_sample",
             type=int,
             default=252,
@@ -70,6 +75,7 @@ class Evaluator:
         self.disable_SR: bool = args.disable_SR
         self.disable_SteR: bool = args.disable_SteR
         self.disable_AT: bool = args.disable_AT
+        self.disable_MDD: bool = args.disable_MDD
         self.annual_sample: int = args.annual_sample
         self.risk_free_return: float = args.risk_free_return
         self.portfolio_value_list = []
@@ -131,6 +137,8 @@ class Evaluator:
             logger.info(f"SteR: {self.calculate_SteR()}")
         if not self.disable_AT:
             logger.info(f"AT: {self.calculate_AT()}")
+        if not self.disable_MDD:
+            logger.info(f"MDD: {self.calculate_MDD()}")
 
     def calculate_CR(self) -> float:
         """evaluate the CR metric
@@ -206,3 +214,21 @@ class Evaluator:
                 for w1, w2 in self.portfolio_weight_list
             ]
         ) / (2 * len(self.portfolio_weight_list))
+
+    def calculate_MDD(self) -> float:
+        """evaluate the MDD metric
+
+        Returns:
+            float: the MDD metric
+        """
+        if self.disable_MDD:
+            return None
+        if len(self.portfolio_value_list) == 0:
+            raise ValueError("portfolio_value_list is empty")
+        mdd = 0
+        peak = self.portfolio_value_list[0]
+        for value in self.portfolio_value_list:
+            if value > peak:
+                peak = value
+            mdd = min(mdd, (value - peak) / peak)
+        return -mdd
