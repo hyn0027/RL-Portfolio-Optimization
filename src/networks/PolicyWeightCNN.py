@@ -61,7 +61,7 @@ class PolicyWeightCNN(nn.Module):
         self.layer3 = nn.Conv2d(21, 1, (1, 1))
         self.softmax = nn.Softmax(dim=0)
 
-        self.rf_bias = nn.Parameter(torch.randn(1))
+        self.rf_bias = nn.Parameter(torch.tensor([1], dtype=torch.float32))
 
     def forward(self, state: Dict[str, torch.Tensor]) -> torch.Tensor:
         """forward pass of the PolicyWeightCNN model

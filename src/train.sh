@@ -67,45 +67,45 @@
 #     --model_load_path  ../model/Q_net_last_checkpoint.pth \
 #     --evaluator_saving_path ../evaluator/DQN+BasicDiscreteRealDataEnv.json
 
-python3 run.py \
-    --agent DPG \
-    --env ContinuousRealDataEnv1 \
-    --network PolicyWeightCNN \
-    --asset_codes NVDA GOOGL MSFT AMZN \
-    --train_learning_rate 0.01 \
-    --start_date 2020-01-01 \
-    --end_date 2023-01-01 \
-    --interval 1d \
-    --annual_sample 252 \
-    --device cpu \
-    --train_batch_size 1 \
-    --train_epochs 1 \
-    --window_size 50 \
-    --mode train \
-    --initial_balance 1000000 \
-    --replay_sample_distribution geometric
+# python3 run.py \
+#     --agent DPG \
+#     --env ContinuousRealDataEnv1 \
+#     --network PolicyWeightCNN \
+#     --asset_codes NVDA GOOGL MSFT AMZN \
+#     --train_learning_rate 0.001 \
+#     --start_date 2020-01-01 \
+#     --end_date 2023-01-01 \
+#     --interval 1d \
+#     --annual_sample 252 \
+#     --device cpu \
+#     --train_batch_size 1 \
+#     --train_epochs 5 \
+#     --window_size 50 \
+#     --mode train \
+#     --initial_balance 1000000 \
+#     --replay_sample_distribution geometric
 
-python3 run.py \
-    --agent DPG \
-    --env ContinuousRealDataEnv1 \
-    --network PolicyWeightCNN \
-    --asset_codes NVDA GOOGL MSFT AMZN \
-    --start_date 2023-01-01 \
-    --end_date 2024-01-01 \
-    --interval 1d \
-    --annual_sample 252 \
-    --device cpu \
-    --window_size 50 \
-    --mode test \
-    --initial_balance 1000000 \
-    --model_load_path  ../model/model_last_checkpoint.pth \
-    --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1.json
+# python3 run.py \
+#     --agent DPG \
+#     --env ContinuousRealDataEnv1 \
+#     --network PolicyWeightCNN \
+#     --asset_codes NVDA GOOGL MSFT AMZN \
+#     --start_date 2023-01-01 \
+#     --end_date 2024-01-01 \
+#     --interval 1d \
+#     --annual_sample 252 \
+#     --device cpu \
+#     --window_size 50 \
+#     --mode test \
+#     --initial_balance 1000000 \
+#     --model_load_path  ../model/model_last_checkpoint.pth \
+#     --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1.json
 
 # python3 run.py \
 #     --agent DPG \
 #     --env BasicContinuousRealDataEnv \
 #     --network PolicyCNN \
-#     --train_learning_rate 0.005 \
+#     --train_learning_rate 0.0001 \
 #     --asset_codes NVDA GOOGL MSFT AMZN \
 #     --start_date 2020-01-01 \
 #     --end_date 2023-01-01 \
@@ -118,18 +118,18 @@ python3 run.py \
 #     --mode train \
 #     --initial_balance 1000000
 
-# python3 run.py \
-#     --agent DPG \
-#     --env BasicContinuousRealDataEnv \
-#     --network PolicyCNN \
-#     --asset_codes NVDA GOOGL MSFT AMZN \
-#     --start_date 2023-01-01 \
-#     --end_date 2024-01-01 \
-#     --interval 1d \
-#     --annual_sample 252 \
-#     --device cpu \
-#     --window_size 50 \
-#     --mode test \
-#     --initial_balance 1000000 \
-#     --model_load_path  ../model/model_last_checkpoint.pth \
-#     --evaluator_saving_path ../evaluator/DPG+BasicContinuousRealDataEnv.json
+python3 run.py \
+    --agent DPG \
+    --env BasicContinuousRealDataEnv \
+    --network PolicyCNN \
+    --asset_codes NVDA GOOGL MSFT AMZN \
+    --start_date 2023-01-01 \
+    --end_date 2024-01-01 \
+    --interval 1d \
+    --annual_sample 252 \
+    --device cpu \
+    --window_size 50 \
+    --mode test \
+    --initial_balance 1000000 \
+    --model_load_path  ../model/model_last_checkpoint.pth \
+    --evaluator_saving_path ../evaluator/DPG+BasicContinuousRealDataEnv.json

@@ -75,5 +75,5 @@ class PolicyCNN(nn.Module):
         x = self.relu2(x)
 
         x = self.layer3(x)
-        x = x.view(-1) * 1000
+        x = x.view(-1) * 100
         return x

@@ -114,7 +114,9 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             time_index: int = state["time_index"]
             portfolio_value = state["portfolio_value"]
         new_state = self.update(action, state=state, modify_inner_state=False)
-        reward = torch.log(new_state["portfolio_value"] / portfolio_value)
+        reward = (new_state["portfolio_value"] - portfolio_value) / torch.abs(
+            portfolio_value
+        )
         done = time_index == self.data.time_dimension() - 2
 
         return new_state, reward, done
@@ -138,6 +140,25 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
         """
         if modify_inner_state is None:
             modify_inner_state = state is None
+        if state is None:
+            portfolio_value = self.portfolio_value
+            portfolio_weight = self.portfolio_weight
+            rf_weight = self.rf_weight
+        else:
+            portfolio_value: torch.Tensor = state["portfolio_value"]
+            portfolio_weight: torch.Tensor = state["portfolio_weight"]
+            rf_weight: torch.Tensor = state["rf_weight"]
+        for i in range(self.asset_num):
+            if (
+                action[i] < 0
+                and portfolio_weight[i] * self.portfolio_value < -action[i]
+            ):
+                action[i] = -portfolio_weight[i] * self.portfolio_value
+        while self._cash_shortage(action, portfolio_value, rf_weight):
+            for i in range(self.asset_num):
+                if action[i] > 0:
+                    action[i] = 0
+                    break
         new_state = BaseEnv.update(self, action, state, modify_inner_state)
         new_state.pop("new_rf_weight_prev_day", None)
         new_state.pop("new_portfolio_value_prev_day", None)
