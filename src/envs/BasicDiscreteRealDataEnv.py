@@ -105,7 +105,9 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
 
         new_state = self.update(action, state, modify_inner_state=False)
         reward = (
-            (new_state["portfolio_value"] - portfolio_value) / torch.abs(portfolio_value) * 100
+            (new_state["portfolio_value"] - portfolio_value)
+            / torch.abs(portfolio_value)
+            * 100
         )
         done = time_index == self.data.time_dimension() - 2
 
