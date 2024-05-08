@@ -72,6 +72,10 @@ class DPG(BaseAgent):
             )
             logger.info(f"model loaded from {args.model_load_path}")
 
+            if not args.evaluator_saving_path:
+                raise ValueError("evaluator_saving_path is required for testing")
+            self.evaluator_save_path = args.evaluator_saving_path
+
             self.model.to(self.device)
 
         logger.info("DPG agent initialized")
@@ -88,7 +92,7 @@ class DPG(BaseAgent):
                 with torch.no_grad():
                     state = self.env.get_state()
                     action = self.model(state)
-                    self.env.update(action)
+                    self.env.update(action, state=state, modify_inner_state=True)
                     self.replay.remember(state)
                 self._update_model()
                 progress_bar.update(1)
@@ -131,12 +135,14 @@ class DPG(BaseAgent):
             new_state, _, _ = self.env.act(action, state)
             portfolio_value = self.env.portfolio_value.item()
             portfolio_weight_before_trade = self.env.portfolio_weight
-            portfolio_weight_after_trade = new_state["Portfolio_Weight_Today"]
+            portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
             self.evaluator.push(
                 portfolio_value,
                 (portfolio_weight_before_trade, portfolio_weight_after_trade),
+                new_state["prev_price"],
             )
-            self.env.update(action)
+            self.env.update(action, state, modify_inner_state=True)
             progress_bar.update(1)
         progress_bar.close()
         self.evaluator.evaluate()
+        self.evaluator.output_record_to_json(self.evaluator_save_path)

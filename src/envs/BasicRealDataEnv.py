@@ -1,5 +1,5 @@
 import argparse
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 
 from utils.data import Data
 from utils.logging import get_logger
@@ -221,6 +221,10 @@ class BasicRealDataEnv(BaseEnv):
         """
         return {
             "price": torch.Size([self.asset_num, self.window_size]),
+            "time_index": torch.Size([1]),
+            "portfolio_weight": torch.Size([self.asset_num]),
+            "rf_weight": torch.Size([1]),
+            "portfolio_value": torch.Size([1]),
         }
 
     def state_tensor_names(self) -> List[str]:
@@ -229,18 +233,44 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             List[str]: the names of the state tensors
         """
-        return ["price"]
+        return [
+            "price",
+            "time_index",
+            "portfolio_weight",
+            "rf_weight",
+            "portfolio_value",
+        ]
 
     def get_state(
         self,
-    ) -> Optional[Dict[str, torch.Tensor]]:
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
+    ) -> Optional[Dict[str, Union[torch.Tensor, int]]]:
         """get the state tensors at the current time.
 
+        Args:
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
+
+
         Returns:
-            Dict[str, torch.Tensor]: the state tensors
+            Dict[str, Union[torch.Tensor, int]]: the state tensors
         """
+
+        if state is None:
+            time_index = self.time_index
+            portfolio_weight = self.portfolio_weight
+            rf_weight = self.rf_weight
+            portfolio_value = self.portfolio_value
+        else:
+            time_index: int = state["time_index"]
+            portfolio_weight: torch.Tensor = state["portfolio_weight"]
+            rf_weight: torch.Tensor = state["rf_weight"]
+            portfolio_value: torch.Tensor = state["portfolio_value"]
         return {
-            "price": self._get_price_tensor_in_window(self.time_index),
+            "price": self._get_price_tensor_in_window(time_index),
+            "time_index": time_index,
+            "portfolio_weight": portfolio_weight,
+            "rf_weight": rf_weight,
+            "portfolio_value": portfolio_value,
         }
 
     def reset(self) -> None:

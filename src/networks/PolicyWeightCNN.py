@@ -14,7 +14,7 @@ logger = get_logger("PolicyWeightCNN")
 @register_network("PolicyWeightCNN")
 class PolicyWeightCNN(nn.Module):
     """
-    The ValueCNN model
+    The PolicyWeightCNN model
 
     Reference:
         original paper: https://arxiv.org/abs/1706.10059

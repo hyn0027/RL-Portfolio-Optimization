@@ -1,5 +1,5 @@
 import argparse
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Union
 
 from utils.logging import get_logger
 
@@ -49,6 +49,12 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         return {
             "Xt": torch.Size([3, self.window_size, self.asset_num]),
             "Wt_ 1": torch.size([self.asset_num]),
+            "previous_weight": torch.Size([self.asset_num]),
+            "previous_value": torch.Size([1]),
+            "time_index": torch.Size([1]),
+            "portfolio_weight": torch.Size([self.asset_num]),
+            "rf_weight": torch.Size([1]),
+            "portfolio_value": torch.Size([1]),
         }
 
     def state_tensor_names(self) -> List[str]:
@@ -57,93 +63,151 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         Returns:
             List[str]: the names of the state tensors
         """
-        return ["Xt", "Wt_1"]
+        return [
+            "Xt",
+            "Wt_1",
+            "previous_weight",
+            "previous_value",
+            "time_index",
+            "portfolio_weight",
+            "rf_weight",
+            "portfolio_value",
+        ]
 
     def get_state(
         self,
-    ) -> Optional[Dict[str, torch.Tensor]]:
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
+    ) -> Optional[Dict[str, Union[torch.Tensor, int]]]:
         """get the state tensors at the current time.
+
+        Args:
+            state (Optional[Dict[str, torch.Tensor]], optional): the state tensors. Defaults to None.
 
         Returns:
             Dict[str, torch.Tensor]: the state tensors
         """
-        vt = self._get_price_tensor_in_window(self.time_index).transpose(0, 1)
-        vt_hi = self._get_high_price_tensor_in_window(self.time_index).transpose(0, 1)
-        vt_lo = self._get_low_price_tensor_in_window(self.time_index).transpose(0, 1)
+        if state is None:
+            previous_weight = self.previous_weight
+            previous_value = self.previous_value
+            time_index = self.time_index
+            portfolio_weight = self.portfolio_weight
+            rf_weight = self.rf_weight
+            portfolio_value = self.portfolio_value
+        else:
+            previous_weight: torch.Tensor = state["previous_weight"]
+            previous_value: torch.Tensor = state["previous_value"]
+            time_index: int = state["time_index"]
+            portfolio_weight: torch.Tensor = state["portfolio_weight"]
+            rf_weight: torch.Tensor = state["rf_weight"]
+            portfolio_value: torch.Tensor = state["portfolio_value"]
+
+        vt = self._get_price_tensor_in_window(time_index).transpose(0, 1)
+        vt_hi = self._get_high_price_tensor_in_window(time_index).transpose(0, 1)
+        vt_lo = self._get_low_price_tensor_in_window(time_index).transpose(0, 1)
 
         vt_hi = vt_hi / vt[0]
         vt_lo = vt_lo / vt[0]
         vt = vt / vt[0]
 
         Xt = torch.stack((vt, vt_hi, vt_lo), dim=0)
-        Wt_1 = self.previous_weight
+        Wt_1 = previous_weight
 
         return {
             "Xt": Xt,
             "Wt_1": Wt_1,
-            "time_index": self.time_index,
-            "portfolio_value": self.portfolio_value,
-            "portfolio_weight": self.portfolio_weight,
-            "previous_value": self.previous_value,
+            "previous_value": previous_value,
+            "previous_weight": previous_weight,
+            "time_index": time_index,
+            "portfolio_weight": portfolio_weight,
+            "rf_weight": rf_weight,
+            "portfolio_value": portfolio_value,
         }
 
-    def act(self, action_weight: torch.Tensor, state: Dict) -> torch.Tensor:
+    def act(
+        self,
+        action_weight: torch.Tensor,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
+    ) -> Tuple[Dict[str, Optional[Union[torch.Tensor, int]]], torch.Tensor, bool]:
         """
-        perform an action (the trading size)
+        perform an action (the portfolio weight)
 
         Args:
-            action_weight (torch.Tensor): the action to perform, means the weight after trade
+            action_weight (torch.Tensor): the action to perform
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
 
         Returns:
-            Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]: the new state, reward, and whether the episode is done
+            Tuple[Dict[str, Optional[Union[torch.Tensor, int]]], torch.Tensor, bool]: the new state, reward, and whether the episode is done
         """
+        if state is None:
+            time_index = self.time_index
+            previous_value = self.previous_value
+            portfolio_weight = self.portfolio_weight
+            portfolio_value = self.portfolio_value
+        else:
+            time_index: int = state["time_index"]
+            previous_value: torch.Tensor = state["previous_value"]
+            portfolio_weight: torch.Tensor = state["portfolio_weight"]
+            portfolio_value: torch.Tensor = state["portfolio_value"]
+
         action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
             self,
-            state["portfolio_weight"],
+            portfolio_weight,
             action_weight,
-            state["portfolio_value"],
-        )
-        (
-            new_portfolio_weight,
-            new_portfolio_weight_next_day,
-            new_rf_weight,
-            new_rf_weight_next_day,
-            new_portfolio_value,
-            new_portfolio_value_next_day,
-            static_portfolio_value,
-        ) = self._get_new_portfolio_weight_and_value(
-            action, time_index=state["time_index"]
+            portfolio_value,
         )
 
-        reward = torch.log(new_portfolio_value / state["previous_value"])
-
-        new_state = {
-            "Portfolio_Weight_Today": new_portfolio_weight,
-        }
-
-        done = self.time_index == self.data.time_dimension() - 2
+        new_state = self.update(action_weight, state=state, modify_inner_state=False)
+        reward = torch.log(new_state["previous_value"] / previous_value)
+        done = time_index == self.data.time_dimension() - 2
 
         return new_state, reward, done
 
-    def update(self, action_weight: torch.Tensor) -> None:
+    def update(
+        self,
+        action_weight: torch.Tensor,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]],
+        modify_inner_state: Optional[bool] = None,
+    ) -> Dict[str, Union[torch.Tensor, int]]:
         """
         update the environment
 
         Args:
             action_weight (torch.Tensor): the action to perform, means the weight after trade
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
+            modify_inner_state (Optional[bool], optional): whether to modify the inner state. Defaults to None.
+
+        returns:
+            Dict[str, Union[torch.Tensor, int]]: the new state
         """
+        if state is None:
+            portfolio_weight = self.portfolio_weight
+            portfolio_value = self.portfolio_value
+        else:
+            portfolio_weight: torch.Tensor = state["portfolio_weight"]
+            portfolio_value: torch.Tensor = state["portfolio_value"]
+        if modify_inner_state is None:
+            modify_inner_state = state is None
+
         action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
-            self, self.portfolio_weight, action_weight, self.portfolio_value
+            self, portfolio_weight, action_weight, portfolio_value
         )
-        (
-            new_portfolio_weight,
-            new_portfolio_weight_next_day,
-            new_rf_weight,
-            new_rf_weight_next_day,
-            new_portfolio_value,
-            new_portfolio_value_next_day,
-            static_portfolio_value,
-        ) = self._get_new_portfolio_weight_and_value(action)
-        BaseEnv.update(self, action)
-        self.previous_weight = new_portfolio_weight
-        self.previous_value = new_portfolio_value
+        # print("111")
+        # print(portfolio_weight)
+        # print(action_weight)
+        # print(portfolio_value)
+        # print(action)
+        # print("222")
+        new_state = BaseEnv.update(self, action, state, modify_inner_state)
+        if modify_inner_state:
+            self.previous_weight = new_state["new_portfolio_weight_prev_day"]
+            self.previous_value = new_state["new_portfolio_value_prev_day"]
+        new_state["previous_value"] = new_state["new_portfolio_value_prev_day"]
+        new_state["previous_weight"] = new_state["new_portfolio_weight_prev_day"]
+        new_state.pop("new_rf_weight_prev_day", None)
+        new_state.pop("static_portfolio_value", None)
+        ret_state = self.get_state(new_state)
+        ret_state["new_portfolio_weight_prev_day"] = new_state[
+            "new_portfolio_weight_prev_day"
+        ]
+        ret_state["prev_price"] = new_state["prev_price"]
+        return ret_state
