@@ -112,3 +112,5 @@ logs/
 .VSCodeCounter/
 
 model/
+
+evaluator/

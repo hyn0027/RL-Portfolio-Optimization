@@ -58,11 +58,17 @@ class BaseAgent(Generic[BaseEnv]):
         parser.add_argument(
             "--train_learning_rate",
             type=float,
-            default=0.001,
+            default=0.01,
             help="learning rate for training",
         )
         parser.add_argument(
             "--loss_min", type=float, default=0.0001, help="minimal value of loss"
+        )
+        parser.add_argument(
+            "--evaluator_saving_path",
+            type=str,
+            required=False,
+            help="Path to save the evaluator",
         )
 
     def __init__(

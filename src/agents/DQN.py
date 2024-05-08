@@ -112,6 +112,10 @@ class DQN(BaseAgent[BaseEnv]):
             )
             logger.info(f"model loaded from {args.model_load_path}")
 
+            if not args.evaluator_saving_path:
+                raise ValueError("evaluator_saving_path is required for testing")
+            self.evaluator_save_path = args.evaluator_saving_path
+
             self.Q_network.to(self.device)
 
         logger.info("DQN initialized")
@@ -222,13 +226,14 @@ class DQN(BaseAgent[BaseEnv]):
 
             portfolio_value = self.env.portfolio_value.item()
             portfolio_weight_before_trade = self.env.portfolio_weight
-            portfolio_weight_after_trade = new_state["Portfolio_Weight_Today"]
+            portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
             self.evaluator.push(
                 portfolio_value,
                 (portfolio_weight_before_trade, portfolio_weight_after_trade),
-                new_state["Current_price"],
+                new_state["prev_price"],
             )
             self.env.update(best_action)
             progress_bar.update(1)
         progress_bar.close()
         self.evaluator.evaluate()
+        self.evaluator.output_record_to_json(self.evaluator_save_path)

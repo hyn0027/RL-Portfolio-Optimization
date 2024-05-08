@@ -81,7 +81,7 @@ class Evaluator:
         self.portfolio_value_list = []
         self.portfolio_weight_list = []
         self.return_rate = []
-        self.previous_portfolio_weight = args.initial_balance
+        self.previous_portfolio_value = args.initial_balance
         self.asset_prices = []
         logger.info("Evaluator initialized")
 
@@ -95,7 +95,7 @@ class Evaluator:
         self.portfolio_value_list = []
         self.portfolio_weight_list = []
         self.return_rate = []
-        self.previous_portfolio_weight = initial_balance
+        self.previous_portfolio_value = initial_balance
         self.asset_prices = []
 
     def push(
@@ -114,10 +114,10 @@ class Evaluator:
         self.portfolio_value_list.append(portfolio_value)
         self.portfolio_weight_list.append(portfolio_weight)
         self.return_rate.append(
-            (portfolio_value - self.previous_portfolio_weight)
-            / self.previous_portfolio_weight
+            (portfolio_value - self.previous_portfolio_value)
+            / self.previous_portfolio_value
         )
-        self.previous_portfolio_weight = portfolio_value
+        self.previous_portfolio_value = portfolio_value
         self.asset_prices.append(current_price)
 
     def output_record_to_json(self, path: str) -> None:
@@ -130,12 +130,15 @@ class Evaluator:
 
         record = {
             "portfolio_value_list": self.portfolio_value_list,
-            "portfolio_weight_list": self.portfolio_weight_list,
+            "portfolio_weight_list": [
+                (tensor1.tolist(), tensor2.tolist())
+                for tensor1, tensor2 in self.portfolio_weight_list
+            ],
             "return_rate": self.return_rate,
-            "asset_prices": self.asset_prices,
+            "asset_prices": [price.tolist() for price in self.asset_prices],
         }
         with open(path, "w") as f:
-            json.dump(record, f)
+            json.dump(record, f, indent=4)
 
     def evaluate(
         self,

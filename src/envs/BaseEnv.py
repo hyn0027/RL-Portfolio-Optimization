@@ -1,5 +1,5 @@
 import argparse
-from typing import Dict, Tuple, List, Optional, Any
+from typing import Dict, Tuple, List, Optional, Union
 from utils.logging import get_logger
 
 import torch
@@ -213,25 +213,37 @@ class BaseEnv:
 
     def get_state(
         self,
-    ) -> Dict[str, torch.tensor]:
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
+    ) -> Dict[str, Union[torch.Tensor, int]]:
         """get the state tensors at the current time, should be overridden by specific environments
+
+        Args:
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
 
         Raises:
             NotImplementedError: get_state not implemented
 
         Returns:
-            Dict[str, torch.tensor]: the state tensors
+            Dict[str, Union[torch.Tensor, int]]: the state tensors
         """
         raise NotImplementedError("get_state not implemented")
 
-    def act(self) -> Any:
+    def act(
+        self,
+        action: torch.Tensor,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
+    ) -> Tuple[Dict[str, Optional[Union[torch.Tensor, int]]], torch.Tensor, bool]:
         """update the environment with the given action at the given time, should be overridden by specific environments
+
+        Args:
+            action (torch.Tensor): the action to perform
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
 
         Raises:
             NotImplementedError: act not implemented
 
         Returns:
-            Any: the result of the action
+            Tuple[Dict[str, Optional[Union[torch.Tensor, int]]], torch.Tensor, bool]: the new state, reward, and whether the episode is done
         """
         raise NotImplementedError("act not implemented")
 
@@ -243,16 +255,54 @@ class BaseEnv:
         """
         raise NotImplementedError("reset not implemented")
 
-    def update(self, trading_size: torch.Tensor) -> None:
+    def update(
+        self,
+        trading_size: torch.Tensor,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
+        modify_inner_state: Optional[bool] = None,
+    ) -> Dict[str, Union[torch.Tensor, int]]:
         """update the environment with the given trading size of each tensor
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
+            modify_inner_state (Optional[bool], optional): whether to modify the inner state. Defaults to None.
+
+        returns:
+            Dict[str, Union[torch.Tensor, int]]: the new state
         """
-        _, self.portfolio_weight, _, self.rf_weight, _, self.portfolio_value, _ = (
-            BaseEnv._get_new_portfolio_weight_and_value(self, trading_size)
-        )
-        self.time_index += 1
+        if modify_inner_state is None:
+            modify_inner_state = state is None
+        if state is None:
+            time_index = self.time_index
+        else:
+            time_index = state["time_index"]
+
+        (
+            new_portfolio_weight,
+            new_portfolio_weight_next_day,
+            new_rf_weight,
+            new_rf_weight_next_day,
+            new_portfolio_value,
+            new_portfolio_value_next_day,
+            static_portfolio_value,
+        ) = BaseEnv._get_new_portfolio_weight_and_value(self, trading_size, state)
+        if modify_inner_state:
+            self.portfolio_weight = new_portfolio_weight_next_day
+            self.rf_weight = new_rf_weight_next_day
+            self.portfolio_value = new_portfolio_value_next_day
+            self.time_index += 1
+        return {
+            "portfolio_weight": new_portfolio_weight_next_day,
+            "rf_weight": new_rf_weight_next_day,
+            "portfolio_value": new_portfolio_value_next_day,
+            "time_index": time_index + 1,
+            "new_portfolio_weight_prev_day": new_portfolio_weight,
+            "new_rf_weight_prev_day": new_rf_weight,
+            "new_portfolio_value_prev_day": new_portfolio_value,
+            "static_portfolio_value": static_portfolio_value,
+            "prev_price": self._get_price_tensor(time_index),
+        }
 
     def _concat_weight(
         self, portfolio_weight: torch.Tensor, rf_weight: torch.Tensor
@@ -267,6 +317,22 @@ class BaseEnv:
             torch.Tensor: the concatenated weight
         """
         return torch.cat((rf_weight.unsqueeze(0), portfolio_weight), dim=0)
+
+    def _get_price_tensor(self, time_index: Optional[int] = None) -> torch.Tensor:
+        """get the price tensor at a given time, should be overridden by specific environments
+
+        Args:
+            time_index (Optional[int], optional):
+                the time index to get the price tensor.
+                Defaults to None, which means to get the price tensor at the current time.
+
+        Raises:
+            NotImplementedError: _get_price_tensor not implemented
+
+        Returns:
+            torch.Tensor: the price tensor
+        """
+        raise NotImplementedError("_get_price_tensor not implemented")
 
     def _get_price_change_ratio_tensor(
         self, time_index: Optional[int] = None
@@ -381,7 +447,9 @@ class BaseEnv:
         return trading_size, mu
 
     def _get_new_portfolio_weight_and_value(
-        self, trading_size: torch.Tensor, time_index: Optional[int] = None
+        self,
+        trading_size: torch.Tensor,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
     ) -> Tuple[
         torch.Tensor,
         torch.Tensor,
@@ -395,7 +463,7 @@ class BaseEnv:
 
         Args:
             trading_size (torch.Tensor): the trading size of each asset
-            time_index (Optional[int], optional): the time index. Defaults to None, which means the current time index.
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -404,30 +472,77 @@ class BaseEnv:
                 the new portfolio value, the new portfolio value at the next day,
                 and the portfolio value at the next day with static weight
         """
-        if time_index is None:
+        # print("---compute")
+        if state is None:
             time_index = self.time_index
+            portfolio_weight = self.portfolio_weight
+            portfolio_value = self.portfolio_value
+            rf_weight = self.rf_weight
+        else:
+            time_index = state["time_index"]
+            portfolio_weight = state["portfolio_weight"]
+            portfolio_value = state["portfolio_value"]
+            rf_weight = state["rf_weight"]
+
+        # print("current value:", "{:.3f}".format(self.portfolio_value.tolist()))
+        # print("current portfolio weight:", end=" ")
+        # print("[", end="")
+        # print(
+        #     ", ".join(["{:.3f}".format(num) for num in self.portfolio_weight.tolist()]),
+        #     end="",
+        # )
+        # print("]")
 
         # get portfolio weight after trading
-        new_portfolio_weight = (
-            self.portfolio_weight + trading_size / self.portfolio_value
-        )
+        new_portfolio_weight = portfolio_weight + trading_size / portfolio_value
+        # print("new_portfolio_weight:", end=" ")
+        # print("[", end="")
+        # print(
+        #     ", ".join(["{:.3f}".format(num) for num in new_portfolio_weight.tolist()]),
+        #     end="",
+        # )
+        # print("]")
         # add transaction cost
         transaction_cost = self._transaction_cost(trading_size)
-        new_portfolio_value = self.portfolio_value - transaction_cost
+        # print("transaction_cost:", "{:.3f}".format(transaction_cost.tolist()))
+        new_portfolio_value = portfolio_value - transaction_cost
         new_portfolio_weight = (
-            new_portfolio_weight * self.portfolio_value / new_portfolio_value
+            new_portfolio_weight * portfolio_value / new_portfolio_value
         )
         new_rf_weight = torch.tensor(
             1.0, dtype=self.dtype, device=self.device
         ) - torch.sum(new_portfolio_weight)
+        # print(
+        #     "portfolio value after transaction:",
+        #     "{:.3f}".format(new_portfolio_value.tolist()),
+        # )
+        # print("portfolio weight after transaction:", end=" ")
+        # print("[", end="")
+        # print(
+        #     ", ".join(["{:.3f}".format(num) for num in new_portfolio_weight.tolist()]),
+        #     end="",
+        # )
+        # print("]")
+        # print("rf weight after transaction:", "{:.3f}".format(new_rf_weight.tolist()))
 
         # changing to the next day
         # portfolio_value = value * (price change vec * portfolio_weight + rf_weight * (rf + 1))
         price_change_rate = self._get_price_change_ratio_tensor(time_index + 1)
+        # print("price_change_rate:", end=" ")
+        # print("[", end="")
+        # print(
+        #     ", ".join(["{:.3f}".format(num) for num in price_change_rate.tolist()]),
+        #     end="",
+        # )
+        # print("]")
         new_portfolio_value_next_day = new_portfolio_value * (
             torch.sum(price_change_rate * new_portfolio_weight)
             + new_rf_weight * (self.rf_return + 1.0)
         )
+        # print(
+        #     "new_portfolio_value_next_day:",
+        #     "{:.3f}".format(new_portfolio_value_next_day.tolist()),
+        # )
         # adjust weight based on new value
         new_portfolio_weight_next_day = (
             price_change_rate
@@ -435,14 +550,26 @@ class BaseEnv:
             * new_portfolio_value
             / new_portfolio_value_next_day
         )
+        # print("new_portfolio_weight_next_day:", end=" ")
+        # print("[", end="")
+        # print(
+        #     ", ".join(
+        #         ["{:.3f}".format(num) for num in new_portfolio_weight_next_day.tolist()]
+        #     ),
+        #     end="",
+        # )
+        # print("]")
         new_rf_weight_next_day = torch.tensor(
             1.0, dtype=self.dtype, device=self.device
         ) - torch.sum(new_portfolio_weight_next_day)
 
-        static_portfolio_value = self.portfolio_value * (
-            torch.sum(price_change_rate * self.portfolio_weight)
-            + self.rf_weight * (self.rf_return + 1.0)
+        static_portfolio_value = portfolio_value * (
+            torch.sum(price_change_rate * portfolio_weight)
+            + rf_weight * (self.rf_return + 1.0)
         )
+        # print(
+        #     "static_portfolio_value:", "{:.3f}".format(static_portfolio_value.tolist())
+        # )
         return (
             new_portfolio_weight,
             new_portfolio_weight_next_day,

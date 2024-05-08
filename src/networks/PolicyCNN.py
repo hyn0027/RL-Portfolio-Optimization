@@ -51,12 +51,11 @@ class PolicyCNN(nn.Module):
             args (argparse.Namespace): the arguments
         """
         super().__init__()
-        self.layer1 = nn.Conv2d(args.feature_num, 2, (1, 3))
+        self.layer1 = nn.Conv2d(args.feature_num, 4, (1, 3))
         self.relu1 = nn.ReLU()
-        self.layer2 = nn.Conv2d(2, 20, (1, args.window_size - 2))
+        self.layer2 = nn.Conv2d(4, 32, (1, args.window_size - 2))
         self.relu2 = nn.ReLU()
-        self.layer3 = nn.Conv2d(20, 1, (1, 1))
-        self.trading_size = nn.Parameter(torch.tensor(1000.0))
+        self.layer3 = nn.Conv2d(32, 1, (1, 1))
 
     def forward(self, state: Dict[str, torch.Tensor]) -> torch.Tensor:
         """forward pass of the PolicyCNN model
@@ -76,5 +75,5 @@ class PolicyCNN(nn.Module):
         x = self.relu2(x)
 
         x = self.layer3(x)
-        x = x.view(-1) * self.trading_size
+        x = x.view(-1) * 1000
         return x

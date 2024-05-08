@@ -53,7 +53,7 @@ class Replay:
         parser.add_argument(
             "--replay_window",
             type=int,
-            default=2000,
+            default=1000,
             help="replay window size",
         )
         parser.add_argument(

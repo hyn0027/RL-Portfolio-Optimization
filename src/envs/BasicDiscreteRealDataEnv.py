@@ -1,5 +1,5 @@
 import argparse
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Union
 from itertools import product
 import random
 
@@ -80,58 +80,66 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         return -1
 
     def act(
-        self, action: torch.Tensor
-    ) -> Tuple[Dict[str, Optional[torch.Tensor]], torch.Tensor, bool]:
+        self,
+        action: torch.Tensor,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
+    ) -> Tuple[Dict[str, Optional[Union[torch.Tensor, int]]], torch.Tensor, bool]:
         """update the environment with the given action at the given time
 
         Args:
             action (torch.tensor): the action to take
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
 
         Returns:
-            Tuple[Dict[str, torch.tensor], float, bool]: the new state, the reward, and whether the episode is done
+            Tuple[Dict[str, Optional[Union[torch.Tensor, int]]], torch.Tensor, bool]: the new state, reward, and whether the episode is done
         """
         if self.find_action_index(action) == -1:
             raise ValueError(f"Invalid action: {action}")
-        action = action * self.trading_size
-        (
-            new_portfolio_weight,
-            new_portfolio_weight_next_day,
-            new_rf_weight,
-            new_rf_weight_next_day,
-            new_portfolio_value,
-            new_portfolio_value_next_day,
-            static_portfolio_value,
-        ) = self._get_new_portfolio_weight_and_value(action)
 
+        if state is None:
+            time_index = self.time_index
+            portfolio_value = self.portfolio_value
+        else:
+            time_index: int = state["time_index"]
+            portfolio_value: torch.Tensor = state["portfolio_value"]
+
+        new_state = self.update(action, state, modify_inner_state=False)
         reward = (
-            (new_portfolio_value_next_day - self.portfolio_value)
-            / self.portfolio_value
-            * 100
+            (new_state["portfolio_value"] - portfolio_value) / torch.abs(portfolio_value) * 100
         )
-
-        done = self.time_index == self.data.time_dimension() - 2
-
-        new_state = {
-            "price": (self._get_price_tensor_in_window(self.time_index + 1)),
-            "Portfolio_Weight_Today": new_portfolio_weight,
-            "Current_price": self._get_price_tensor(self.time_index),
-        }
+        done = time_index == self.data.time_dimension() - 2
 
         return new_state, reward, done
 
-    def update(self, action: torch.Tensor) -> None:
-        """update the environment with the given action
+    def update(
+        self,
+        action: torch.Tensor,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
+        modify_inner_state: Optional[bool] = None,
+    ) -> Dict[str, Union[torch.Tensor, int]]:
+        """
+        update the environment
 
         Args:
-            action (torch.Tensor): the action to take
+            action (torch.Tensor): the action to perform
+            state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
+            modify_inner_state (Optional[bool], optional): whether to modify the inner state. Defaults to None.
 
-        Raises:
-            ValueError: the action is invalid
+        returns:
+            Dict[str, Union[torch.Tensor, int]]: the new state
         """
+        if modify_inner_state is None:
+            modify_inner_state = state is None
         if self.find_action_index(action) == -1:
             raise ValueError(f"Invalid action: {action}")
         action = action * self.trading_size
-        BaseEnv.update(self, action)
+        new_state = BaseEnv.update(self, action, state, modify_inner_state)
+        ret_state = self.get_state(new_state)
+        ret_state["new_portfolio_weight_prev_day"] = new_state[
+            "new_portfolio_weight_prev_day"
+        ]
+        ret_state["prev_price"] = new_state["prev_price"]
+        return ret_state
 
     def select_random_action(self) -> torch.Tensor:
         """select a random action
