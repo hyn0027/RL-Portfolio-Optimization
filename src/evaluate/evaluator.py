@@ -120,6 +120,23 @@ class Evaluator:
         self.previous_portfolio_weight = portfolio_value
         self.asset_prices.append(current_price)
 
+    def output_record_to_json(self, path: str) -> None:
+        """output the record to a json file
+
+        Args:
+            path (str): the path to the output file
+        """
+        import json
+
+        record = {
+            "portfolio_value_list": self.portfolio_value_list,
+            "portfolio_weight_list": self.portfolio_weight_list,
+            "return_rate": self.return_rate,
+            "asset_prices": self.asset_prices,
+        }
+        with open(path, "w") as f:
+            json.dump(record, f)
+
     def evaluate(
         self,
     ) -> None:
