@@ -482,11 +482,17 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
             action_index = self._action_mapping_rule2(action)
             action = self.all_actions[action_index]
         if self._cash_shortage(action, portfolio_value, rf_weight):
-            return self._action_mapping_rule1(action, Q_Values)
+            return self._action_mapping_rule1(
+                action, Q_Values, portfolio_value, rf_weight
+            )
         return action_index
 
     def _action_mapping_rule1(
-        self, action: torch.Tensor, Q_Values: torch.Tensor
+        self,
+        action: torch.Tensor,
+        Q_Values: torch.Tensor,
+        portfolio_value: Optional[torch.Tensor] = None,
+        rf_weight: Optional[torch.Tensor] = None,
     ) -> int:
         """action mapping rule 1: if there is cash shortage,
         find the subset action with the highest Q value
@@ -494,23 +500,48 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         Args:
             action (torch.Tensor): the trading decision of each asset
             Q_Values (torch.Tensor): the Q values of all actions
+            portfolio_value (Optional[torch.Tensor], optional): the portfolio value. Defaults to None.
+            rf_weight (Optional[torch.Tensor], optional): the risk free weight. Defaults to None.
 
         Returns:
             int: the index of the mapped action
         """
-        possible_action_indexes = []
-        for idx, new_action in enumerate(self.all_actions):
-            if (
-                torch.all(new_action[action == -1] == -1)
-                and torch.all(action[new_action == -1] == -1)
-                and torch.all(new_action[action == 0] == 0)
-                and self._action_validity(new_action)
-            ):
-                possible_action_indexes.append(idx)
+        try:
+            possible_action_indexes = []
+            for idx, new_action in enumerate(self.all_actions):
+                if (
+                    torch.all(new_action[action == -1] == -1)
+                    and torch.all(action[new_action == -1] == -1)
+                    and torch.all(new_action[action == 0] == 0)
+                    and not self._cash_shortage(new_action, portfolio_value, rf_weight)
+                ):
+                    possible_action_indexes.append(idx)
 
-        possible_values = Q_Values[possible_action_indexes]
-        max_index = torch.argmax(possible_values)
-        return possible_action_indexes[max_index]
+            possible_values = Q_Values[possible_action_indexes]
+            max_index = torch.argmax(possible_values)
+            return possible_action_indexes[max_index]
+        except:
+            print("action:", action)
+            for idx, new_action in enumerate(self.all_actions):
+                print("new_action: ", new_action)
+                if (
+                    torch.all(new_action[action == -1] == -1)
+                    and torch.all(action[new_action == -1] == -1)
+                    and torch.all(new_action[action == 0] == 0)
+                    and not self._cash_shortage(new_action, portfolio_value, rf_weight)
+                ):
+                    print("valid")
+                else:
+                    print("invalid")
+                print("condition1:", torch.all(new_action[action == -1] == -1))
+                print("condition2:", torch.all(action[new_action == -1] == -1))
+                print("condition3:", torch.all(new_action[action == 0] == 0))
+                print(
+                    "condition4:",
+                    not self._cash_shortage(new_action, portfolio_value, rf_weight),
+                )
+
+            exit(-1)
 
     def _action_mapping_rule2(self, action: torch.Tensor) -> int:
         """the action mapping rule 2: if there is asset shortage,
