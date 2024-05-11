@@ -87,7 +87,8 @@ class BaseAgent(Generic[BaseEnv]):
             test_mode (bool, optional): test or train mode. Defaults to False.
         """
         logger.info("Initializing BaseAgent")
-        torch.set_num_threads(args.num_threads)
+        if args.num_threads > 0:
+            torch.set_num_threads(args.num_threads)
         self.env = env
         self.device = (
             torch.device("cuda" if torch.cuda.is_available() else "cpu")

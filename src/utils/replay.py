@@ -1,8 +1,9 @@
 from utils.logging import get_logger
 import argparse
-from typing import Any
+from typing import Any, Optional
 import numpy as np
 from collections import deque
+import itertools
 import random
 import copy
 
@@ -89,23 +90,35 @@ class Replay:
         """
         self.memory.append(experience)
 
-    def sample(self) -> Any:
+    def sample(self, size: Optional[int] = None, interval: Optional[int] = None) -> Any:
         """randomly sample a batch of experiences
+
+        Args:
+            size (Optional[int], optional): the size of the batch. Defaults to None.
+            interval (Optional[int], optional): the interval to ignore the last few experiences. Defaults to None.
 
         Returns:
             Any: the batch of experiences
         """
+        if size is None:
+            size = self.batch_size
+        if interval is None:
+            memory = self.memory
+        else:
+            memory = deque(
+                itertools.islice(self.memory, 0, len(self.memory) - interval)
+            )
         if self.sample_distribution == "uniform":
             if self.sample_unique:
-                return random.sample(self.memory, self.batch_size)
+                return random.sample(memory, size)
             else:
-                return random.choices(self.memory, k=self.batch_size)
+                return random.choices(memory, k=size)
         if self.sample_distribution == "geometric":
             if self.sample_unique:
                 return_list = []
-                memory_copy = copy.deepcopy(self.memory)
+                memory_copy = copy.deepcopy(memory)
                 memory_len = len(memory_copy)
-                indices = np.random.geometric(self.sample_geometric_p, self.batch_size)
+                indices = np.random.geometric(self.sample_geometric_p, size)
                 for idx in indices:
                     index = memory_len - idx
                     if index < 0:
@@ -115,13 +128,13 @@ class Replay:
                     memory_copy = memory_copy[:index] + memory_copy[index + 1 :]
                 return return_list
             else:
-                indices = np.random.geometric(self.sample_geometric_p, self.batch_size)
-                memory_len = len(self.memory)
+                indices = np.random.geometric(self.sample_geometric_p, size)
+                memory_len = len(memory)
                 for i in range(len(indices)):
                     indices[i] = memory_len - indices[i]
                     if indices[i] < 0:
                         indices[i] = memory_len - 1
-                return [self.memory[i] for i in indices]
+                return [memory[i] for i in indices]
         raise NotImplementedError(
             f"sample distribution {self.sample_distribution} not implemented"
         )
@@ -134,13 +147,18 @@ class Replay:
     def __len__(self) -> int:
         return len(self.memory)
 
-    def has_enough_samples(self) -> bool:
+    def has_enough_samples(self, interval: Optional[int] = None) -> bool:
         """return if the replay memory has enough samples
+
+        Args:
+            interval (Optional[int], optional): the interval to ignore the last few experiences. Defaults to None.
 
         Returns:
             bool: whether the replay memory has enough samples
         """
+        if interval is None:
+            interval = 0
         if self.sample_unique:
-            return len(self.memory) >= self.batch_size
+            return len(self.memory) - interval >= self.batch_size
         else:
-            return len(self.memory) >= 1
+            return len(self.memory) - interval >= 1

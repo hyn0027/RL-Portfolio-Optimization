@@ -263,7 +263,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--num_threads",
         type=int,
-        default=10,
+        default=0,
         help="Number of threads to use for data loading",
     )
 

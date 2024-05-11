@@ -71,6 +71,7 @@ class BasicRealDataEnv(BaseEnv):
         self.high_price_matrix = torch.stack(high_price_list, dim=1)
         self.low_price_matrix = torch.stack(low_price_list, dim=1)
         self.price_change_matrix = self.price_matrix[:, 1:] / self.price_matrix[:, :-1]
+        self.train_window_interval_end = getattr(args, "DPG_update_window_size", 0)
 
         logger.info("BasicRealDataEnv initialized")
 
@@ -101,7 +102,10 @@ class BasicRealDataEnv(BaseEnv):
         Returns:
             range: the range of time indices
         """
-        return range(self.window_size - 1, self.data.time_dimension() - 1)
+        return range(
+            self.window_size - 1,
+            self.data.time_dimension() - 1 - self.train_window_interval_end,
+        )
 
     def test_time_range(self) -> range:
         """the range of time indices

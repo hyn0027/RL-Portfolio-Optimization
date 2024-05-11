@@ -17,6 +17,14 @@ agents.BaseAgent module
    :undoc-members:
    :show-inheritance:
 
+agents.DPG module
+-----------------
+
+.. automodule:: agents.DPG
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 agents.DQN module
 -----------------
 

@@ -27,6 +27,12 @@ class DPG(BaseAgent):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(DPG, DPG).add_args(parser)
+        parser.add_argument(
+            "--DPG_update_window_size",
+            type=int,
+            default=10,
+            help="the update window size",
+        )
 
     def __init__(
         self,
@@ -60,6 +66,7 @@ class DPG(BaseAgent):
             self.train_optimizer = torch.optim.Adam(
                 self.model.parameters(), lr=args.train_learning_rate
             )
+            self.update_window_size: int = args.DPG_update_window_size
             self.train_optimizer.zero_grad()
         else:
             self.model: nn.Module = registered_networks[args.network](args)
@@ -112,14 +119,17 @@ class DPG(BaseAgent):
         """update the model"""
         self.model.train()
         self.train_optimizer.zero_grad()
-        if not self.replay.has_enough_samples():
+        if not self.replay.has_enough_samples(interval=self.update_window_size):
             return float("nan")
-        states = self.replay.sample()
-        loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
+        states = self.replay.sample(interval=self.update_window_size)
+        loss = torch.tensor(
+            self.update_window_size, dtype=self.dtype, device=self.device
+        )
         for state in states:
-            action = self.model(state)
-            _, reward, _ = self.env.act(action, state)
-            loss += -reward
+            for _ in range(self.update_window_size):
+                action = self.model(state)
+                state, reward, _ = self.env.act(action, state)
+                loss += -reward
         loss.backward()
         self.train_optimizer.step()
         self.model.eval()

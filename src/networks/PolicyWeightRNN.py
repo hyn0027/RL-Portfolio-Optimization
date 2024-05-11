@@ -8,13 +8,13 @@ from networks import register_network
 import torch
 import torch.nn as nn
 
-logger = get_logger("PolicyWeightCNN")
+logger = get_logger("PolicyWeightRNN")
 
 
-@register_network("PolicyWeightCNN")
-class PolicyWeightCNN(nn.Module):
+@register_network("PolicyWeightRNN")
+class PolicyWeightRNN(nn.Module):
     """
-    The PolicyWeightCNN model
+    The PolicyWeightRNN model
 
     Reference:
         original paper: https://arxiv.org/abs/1706.10059
@@ -48,23 +48,19 @@ class PolicyWeightCNN(nn.Module):
         )
 
     def __init__(self, args: argparse.Namespace) -> None:
-        """initialize the PolicyWeightCNN model
+        """initialize the PolicyWeightRNN model
 
         Args:
             args (argparse.Namespace): the arguments
         """
         super().__init__()
-        self.layer1 = nn.Conv2d(args.feature_num, 2, (1, 3))
-        self.relu1 = nn.ReLU()
-        self.layer2 = nn.Conv2d(2, 20, (1, args.window_size - 2))
-        self.relu2 = nn.ReLU()
-        self.layer3 = nn.Conv2d(21, 1, (1, 1))
+        self.RNN = nn.RNN(args.feature_num, 20, 1)
+        self.conv = nn.Conv2d(21, 1, (1, 1))
         self.softmax = nn.Softmax(dim=0)
-
         self.rf_bias = nn.Parameter(torch.tensor([1], dtype=torch.float32))
 
     def forward(self, state: Dict[str, torch.Tensor]) -> torch.Tensor:
-        """forward pass of the PolicyWeightCNN model
+        """forward pass of the PolicyWeightRNN model
 
         Args:
             x (Dict[str, torch.Tensor]): the input tensors
@@ -72,20 +68,16 @@ class PolicyWeightCNN(nn.Module):
         Returns:
             torch.Tensor: the output tensor
         """
-        x = state["Xt"].transpose(1, 2)
-        w = state["Wt_1"]
+        x = state["Xt"]  # 3 * window_size * asset_num
+        w = state["Wt_1"]  # asset_num
 
-        x = self.layer1(x)
-        x = self.relu1(x)
-
-        x = self.layer2(x)
-        x = self.relu2(x)
-
-        w = w.view(1, -1, 1)
-        x = torch.cat((x, w), 0)
-
-        x = self.layer3(x)
-        x = x.view(-1)
+        x = x.permute(1, 2, 0)  # window_size * asset_num * 3
+        _, hn = self.RNN(x)  # 1 * asset_num * 20
+        w = w.view(1, -1, 1)  # 1 * asset_num * 1
+        x = torch.cat((hn, w), dim=2)  # 1 * asset_num * 21
+        x = x.permute(2, 1, 0)  # 21 * asset_num * 1
+        x = self.conv(x)  # 1 * asset_num * 1
+        x = x.view(-1)  # asset_num
         x = torch.cat((self.rf_bias, x), 0)
         x = self.softmax(x)
         return x[1:]

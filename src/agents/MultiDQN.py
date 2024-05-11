@@ -217,6 +217,13 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                 save_path,
             )
             logger.info(f"Model saved to {save_path}")
+            save_path = os.path.join(self.model_save_path, f"Q_net_epoch{epoch}.pth")
+            logger.info(f"Saving model to {save_path}")
+            torch.save(
+                self.Q_network.state_dict(),
+                save_path,
+            )
+            logger.info(f"Model saved to {save_path}")
 
     def _update_Q_network(self) -> float:
         """random sample multiple experience lists
@@ -242,9 +249,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                         reward + self.gamma * target_q_values[best_action_index]
                     )
                 q_value = self.Q_network(state, False)[action_index]
-                loss += ((q_value - target_q_value) ** 2) * self.loss_scale
-        if loss < self.loss_min:
-            self.loss_scale *= 2
+                loss += (q_value - target_q_value) ** 2
         loss.backward()
         self.train_optimizer.step()
         self.train_optimizer.zero_grad()
