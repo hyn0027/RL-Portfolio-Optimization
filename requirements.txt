@@ -1,7 +1,7 @@
 torch>=2.0.0
 pandas>=2.0.0
 yfinance>=0.2.37
-tqdm>= 4.60
+tqdm>=4.60
 sphinx>=5.0.2
-setuptools>=52.0.0
+setuptools>=57.0.0
 m2r2

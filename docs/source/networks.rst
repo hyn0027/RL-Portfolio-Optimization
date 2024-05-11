@@ -33,6 +33,22 @@ networks.PolicyWeightCNN module
    :undoc-members:
    :show-inheritance:
 
+networks.PolicyWeightLSTM module
+--------------------------------
+
+.. automodule:: networks.PolicyWeightLSTM
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+networks.PolicyWeightRNN module
+-------------------------------
+
+.. automodule:: networks.PolicyWeightRNN
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 networks.ValueDNN module
 ------------------------
 
