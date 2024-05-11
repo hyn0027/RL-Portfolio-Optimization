@@ -249,9 +249,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                         reward + self.gamma * target_q_values[best_action_index]
                     )
                 q_value = self.Q_network(state, False)[action_index]
-                loss += ((q_value - target_q_value) ** 2) * self.loss_scale
-        if loss < self.loss_min:
-            self.loss_scale *= 2
+                loss += (q_value - target_q_value) ** 2
         loss.backward()
         self.train_optimizer.step()
         self.train_optimizer.zero_grad()
