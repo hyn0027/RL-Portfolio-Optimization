@@ -125,10 +125,12 @@ class BaseEnv:
         self.portfolio_value = torch.tensor(
             self.args.initial_balance, dtype=self.dtype, device=self.device
         )
-        self.portfolio_weight = torch.zeros(
+        self.portfolio_weight = torch.ones(
             self.get_asset_num(), dtype=self.dtype, device=self.device
+        ) / (self.get_asset_num() + 1)
+        self.rf_weight = torch.tensor(
+            1.0 / (self.get_asset_num() + 1), dtype=self.dtype, device=self.device
         )
-        self.rf_weight = torch.tensor(1.0, dtype=self.dtype, device=self.device)
 
     def get_asset_num(self) -> int:
         """get the number of assets, should be overridden by specific environments
@@ -257,14 +259,14 @@ class BaseEnv:
 
     def update(
         self,
-        trading_size: torch.Tensor,
+        trading_size: torch.Tensor = None,
         state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
         modify_inner_state: Optional[bool] = None,
     ) -> Dict[str, Union[torch.Tensor, int]]:
         """update the environment with the given trading size of each tensor
 
         Args:
-            trading_size (torch.Tensor): the trading size of each asset
+            trading_size (torch.Tensor): the trading size of each asset. Defaults to None.
             state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
             modify_inner_state (Optional[bool], optional): whether to modify the inner state. Defaults to None.
 
@@ -277,6 +279,11 @@ class BaseEnv:
             time_index = self.time_index
         else:
             time_index = state["time_index"]
+
+        if trading_size is None:
+            trading_size = torch.zeros(
+                self.get_asset_num(), dtype=self.dtype, device=self.device
+            )
 
         (
             new_portfolio_weight,

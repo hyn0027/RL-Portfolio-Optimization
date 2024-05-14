@@ -1,43 +1,43 @@
 #!/bin/bash
 
-python3 run.py \
-    --agent MultiDQN \
-    --env DiscreteRealDataEnv1 \
-    --network MultiValueLSTM \
-    --asset_codes AMZN EPAM WBD \
-    --start_date 2017-11-01 \
-    --end_date 2023-01-01 \
-    --interval 1d \
-    --annual_sample 252 \
-    --device cuda \
-    --pretrain_epochs 0 \
-    --train_batch_size 32 \
-    --train_epochs 500 \
-    --train_learning_rate 1e-7 \
-    --episode_length 252 \
-    --DQN_epsilon_decay 0.999 \
-    --replay_sample_unique \
-    --window_size 20 \
-    --mode train \
-    --model_save_path ../model/MultiDQN+AMZN+EPAM+WBD \
-    --replay_window 2000 \
-    --initial_balance 1000000 > ../logs/train_MultiDQN+AMZN+EPAM+WBD.log 2>&1
-
 # python3 run.py \
 #     --agent MultiDQN \
-#     --initial_balance 1000000 \
 #     --env DiscreteRealDataEnv1 \
 #     --network MultiValueLSTM \
 #     --asset_codes AMZN EPAM WBD \
-#     --start_date 2022-11-01 \
-#     --end_date 2024-01-01 \
+#     --start_date 2017-11-01 \
+#     --end_date 2023-01-01 \
 #     --interval 1d \
-#     --annual_sample 250 \
+#     --annual_sample 252 \
 #     --device cuda \
+#     --pretrain_epochs 0 \
+#     --train_batch_size 32 \
+#     --train_epochs 500 \
+#     --train_learning_rate 1e-7 \
+#     --episode_length 252 \
+#     --DQN_epsilon_decay 0.999 \
+#     --replay_sample_unique \
 #     --window_size 20 \
-#     --mode test \
-#     --model_load_path  ../model/MultiDQN+AMZN+EPAM+WBD/Q_net_last_checkpoint.pth \
-#     --evaluator_saving_path ../evaluator/MultiDQN+DiscreteRealDataEnv1+AMZN+EPAM+WBD.json > ../logs/test_MultiDQN+AMZN+EPAM+WBD.log 2>&1
+#     --mode train \
+#     --model_save_path ../model/MultiDQN+AMZN+EPAM+WBD \
+#     --replay_window 2000 \
+#     --initial_balance 1000000 > ../logs/train_MultiDQN+AMZN+EPAM+WBD.log 2>&1
+
+python3 run.py \
+    --agent MultiDQN \
+    --initial_balance 1000000 \
+    --env DiscreteRealDataEnv1 \
+    --network MultiValueLSTM \
+    --asset_codes AMZN EPAM WBD \
+    --start_date 2022-11-01 \
+    --end_date 2024-01-01 \
+    --interval 1d \
+    --annual_sample 250 \
+    --device cuda \
+    --window_size 20 \
+    --mode test \
+    --model_load_path ../model/MultiDQN+AMZN+EPAM+WBD/Q_net_last_checkpoint.pth\
+    --evaluator_saving_path ../evaluator/MultiDQN+DiscreteRealDataEnv1+AMZN+EPAM+WBD > ../logs/test_MultiDQN+AMZN+EPAM+WBD.log 2>&1
 
 # python3 run.py \
 #     --agent DQN \

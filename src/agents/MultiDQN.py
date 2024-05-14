@@ -200,7 +200,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                         action_index = self.env.action_mapping(
                             action_index, action_q_value
                         )
-                new_state, reward, done = self.env.act(action_index)
+                # new_state, reward, done = self.env.act(action_index)
                 self.env.update(action_index)
                 self._update_Q_network()
                 self._update_epsilon()
@@ -236,7 +236,8 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         if not self.replay.has_enough_samples():
             return float("nan")
         K = self.replay.sample()
-        loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
+        loss = None
+        mse_loss = nn.MSELoss()
         for L in K:
             for state, action_index, reward, new_state in L:
                 with torch.no_grad():
@@ -249,7 +250,10 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                         reward + self.gamma * target_q_values[best_action_index]
                     )
                 q_value = self.Q_network(state, False)[action_index]
-                loss += (q_value - target_q_value) ** 2
+                if loss is None:
+                    loss = mse_loss(q_value, target_q_value)
+                else:
+                    loss += mse_loss(q_value, target_q_value)
         loss.backward()
         self.train_optimizer.step()
         self.train_optimizer.zero_grad()
@@ -258,9 +262,12 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
 
     def test(self) -> None:
         """test the MultiDQN agent"""
+        # model
+        logger.info("Testing Model")
         self.Q_network.eval()
         self.env.set_episode_for_testing()
         self.env.reset()
+        self.evaluator.reset()
         time_indices = self.env.test_time_range()
         progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
         for _ in time_indices:
@@ -283,5 +290,113 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             self.env.update(action_index)
             progress_bar.update(1)
         progress_bar.close()
+        logger.info("Model Results:")
         self.evaluator.evaluate()
-        self.evaluator.output_record_to_json(self.evaluator_save_path)
+        if not os.path.exists(self.evaluator_save_path):
+            os.makedirs(self.evaluator_save_path)
+        self.evaluator.output_record_to_json(
+            os.path.join(self.evaluator_save_path, "model.json")
+        )
+
+        # buy and hold
+        logger.info("Testing B&H")
+        self.env.set_episode_for_testing()
+        self.env.reset()
+        self.evaluator.reset()
+        time_indices = self.env.test_time_range()
+        progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+        for _ in time_indices:
+            new_state = self.env.update()
+            portfolio_value = self.env.portfolio_value.item()
+            portfolio_weight_before_trade = self.env.portfolio_weight
+            portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
+            self.evaluator.push(
+                portfolio_value,
+                (portfolio_weight_before_trade, portfolio_weight_after_trade),
+                new_state["prev_price"],
+            )
+            progress_bar.update(1)
+        progress_bar.close()
+        logger.info("B&H Results:")
+        self.evaluator.evaluate()
+        self.evaluator.output_record_to_json(
+            os.path.join(self.evaluator_save_path, "B&H.json")
+        )
+
+        # buy and hold
+        logger.info("Testing Random")
+        self.env.set_episode_for_testing()
+        self.env.reset()
+        self.evaluator.reset()
+        time_indices = self.env.test_time_range()
+        progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+        for _ in time_indices:
+            action = self.env.select_random_action()
+            new_state = self.env.update(action)
+            portfolio_value = self.env.portfolio_value.item()
+            portfolio_weight_before_trade = self.env.portfolio_weight
+            portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
+            self.evaluator.push(
+                portfolio_value,
+                (portfolio_weight_before_trade, portfolio_weight_after_trade),
+                new_state["prev_price"],
+            )
+            progress_bar.update(1)
+        progress_bar.close()
+        logger.info("Random Results:")
+        self.evaluator.evaluate()
+        self.evaluator.output_record_to_json(
+            os.path.join(self.evaluator_save_path, "random.json")
+        )
+
+        # testing momentum
+        logger.info("Testing Momentum")
+        self.env.set_episode_for_testing()
+        self.env.reset()
+        self.evaluator.reset()
+        time_indices = self.env.test_time_range()
+        progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+        for _ in time_indices:
+            action = self.env.get_momentum_action()
+            new_state = self.env.update(action)
+            portfolio_value = self.env.portfolio_value.item()
+            portfolio_weight_before_trade = self.env.portfolio_weight
+            portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
+            self.evaluator.push(
+                portfolio_value,
+                (portfolio_weight_before_trade, portfolio_weight_after_trade),
+                new_state["prev_price"],
+            )
+            progress_bar.update(1)
+        progress_bar.close()
+        logger.info("Momentum Results:")
+        self.evaluator.evaluate()
+        self.evaluator.output_record_to_json(
+            os.path.join(self.evaluator_save_path, "momentum.json")
+        )
+
+        # testing reverse momentum
+        logger.info("Testing Reverse Momentum")
+        self.env.set_episode_for_testing()
+        self.env.reset()
+        self.evaluator.reset()
+        time_indices = self.env.test_time_range()
+        progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
+        for _ in time_indices:
+            action = self.env.get_reverse_momentum_action()
+            new_state = self.env.update(action)
+            portfolio_value = self.env.portfolio_value.item()
+            portfolio_weight_before_trade = self.env.portfolio_weight
+            portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
+            self.evaluator.push(
+                portfolio_value,
+                (portfolio_weight_before_trade, portfolio_weight_after_trade),
+                new_state["prev_price"],
+            )
+            progress_bar.update(1)
+        progress_bar.close()
+        logger.info("Reverse Momentum Results:")
+        self.evaluator.evaluate()
+        self.evaluator.output_record_to_json(
+            os.path.join(self.evaluator_save_path, "reverse_momentum.json")
+        )

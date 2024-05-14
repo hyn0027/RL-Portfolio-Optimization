@@ -123,7 +123,7 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
 
     def update(
         self,
-        action: torch.Tensor,
+        action: torch.Tensor = None,
         state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
         modify_inner_state: Optional[bool] = None,
     ) -> Dict[str, Union[torch.Tensor, int]]:
@@ -131,7 +131,7 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
         update the environment
 
         Args:
-            action (torch.Tensor): the action to perform
+            action (torch.Tensor): the action to perform. Defaults to None.
             state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
             modify_inner_state (Optional[bool], optional): whether to modify the inner state. Defaults to None.
 
@@ -148,6 +148,8 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             portfolio_value: torch.Tensor = state["portfolio_value"]
             portfolio_weight: torch.Tensor = state["portfolio_weight"]
             rf_weight: torch.Tensor = state["rf_weight"]
+        if action is None:
+            action = torch.zeros(self.asset_num)
         for i in range(self.asset_num):
             if (
                 action[i] < 0

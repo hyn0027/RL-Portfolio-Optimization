@@ -83,15 +83,18 @@ class Evaluator:
         self.return_rate = []
         self.previous_portfolio_value = args.initial_balance
         self.asset_prices = []
+        self.initial_balance = args.initial_balance
         logger.info("Evaluator initialized")
 
-    def reset(self, initial_balance: float) -> None:
+    def reset(self, initial_balance: float = None) -> None:
         """reset the evaluator
 
         Args:
-            initial_balance (float): the initial balance
+            initial_balance (float): the initial balance, if None, use the initial balance from the arguments. Defaults to None.
         """
         logger.info("Resetting Evaluator")
+        if initial_balance is None:
+            initial_balance = self.initial_balance
         self.portfolio_value_list = []
         self.portfolio_weight_list = []
         self.return_rate = []

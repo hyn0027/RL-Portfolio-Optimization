@@ -73,7 +73,7 @@ python3 run.py \
     --agent DPG \
     --env ContinuousRealDataEnv1 \
     --network PolicyWeightCNN \
-    --asset_codes AMZN EPAM WBD \
+    --asset_codes NVDA GOOGL MSFT AMZN EPAM WBD \
     --start_date 2017-11-01 \
     --end_date 2023-01-01 \
     --train_learning_rate 3e-5 \
@@ -85,15 +85,15 @@ python3 run.py \
     --window_size 20 \
     --DPG_update_window_size 50 \
     --mode train \
-    --model_save_path ../model/DPG+CNN+AMZN+EPAM+WBD\
+    --model_save_path ../model/DPG+CNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD\
     --initial_balance 1000000 \
-    --replay_sample_distribution geometric > ../logs/train_DPG+CNN+AMZN+EPAM+WBD.log 2>&1
+    --replay_sample_distribution geometric > ../logs/train_DPG+CNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.log 2>&1
 
 python3 run.py \
     --agent DPG \
     --env ContinuousRealDataEnv1 \
     --network PolicyWeightCNN \
-    --asset_codes AMZN EPAM WBD \
+    --asset_codes NVDA GOOGL MSFT AMZN EPAM WBD \
     --start_date 2022-11-01 \
     --end_date 2024-01-01 \
     --interval 1d \
@@ -102,15 +102,15 @@ python3 run.py \
     --window_size 20 \
     --mode test \
     --initial_balance 1000000 \
-    --model_load_path  ../model/DPG+CNN+AMZN+EPAM+WBD/model_last_checkpoint.pth \
-    --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightCNN+AMZN+EPAM+WBD.json > ../logs/test_DPG+CNN+AMZN+EPAM+WBD.log 2>&1
+    --model_load_path  ../model/DPG+CNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD/model_last_checkpoint.pth \
+    --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightCNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.json > ../logs/test_DPG+CNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.log 2>&1
 
 
 python3 run.py \
     --agent DPG \
     --env ContinuousRealDataEnv1 \
     --network PolicyWeightRNN \
-    --asset_codes AMZN EPAM WBD \
+    --asset_codes NVDA GOOGL MSFT AMZN EPAM WBD \
     --start_date 2017-11-01 \
     --end_date 2023-01-01 \
     --train_learning_rate 3e-5 \
@@ -122,15 +122,15 @@ python3 run.py \
     --window_size 20 \
     --DPG_update_window_size 50 \
     --mode train \
-    --model_save_path ../model/DPG+RNN+AMZN+EPAM+WBD\
+    --model_save_path ../model/DPG+RNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD\
     --initial_balance 1000000 \
-    --replay_sample_distribution geometric > ../logs/train_DPG+RNN+AMZN+EPAM+WBD.log 2>&1
+    --replay_sample_distribution geometric > ../logs/train_DPG+RNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.log 2>&1
 
 python3 run.py \
     --agent DPG \
     --env ContinuousRealDataEnv1 \
     --network PolicyWeightRNN \
-    --asset_codes AMZN EPAM WBD \
+    --asset_codes NVDA GOOGL MSFT AMZN EPAM WBD \
     --start_date 2022-11-01 \
     --end_date 2024-01-01 \
     --interval 1d \
@@ -139,14 +139,14 @@ python3 run.py \
     --window_size 20 \
     --mode test \
     --initial_balance 1000000 \
-    --model_load_path  ../model/DPG+RNN+AMZN+EPAM+WBD/model_last_checkpoint.pth \
-    --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightRNN+AMZN+EPAM+WBD.json > ../logs/test_DPG+RNN+AMZN+EPAM+WBD.log 2>&1
+    --model_load_path  ../model/DPG+RNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD/model_last_checkpoint.pth \
+    --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightRNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.json > ../logs/test_DPG+RNN+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.log 2>&1
 
 python3 run.py \
     --agent DPG \
     --env ContinuousRealDataEnv1 \
     --network PolicyWeightLSTM \
-    --asset_codes AMZN EPAM WBD \
+    --asset_codes NVDA GOOGL MSFT AMZN EPAM WBD \
     --start_date 2017-11-01 \
     --end_date 2023-01-01 \
     --train_learning_rate 3e-5 \
@@ -158,15 +158,15 @@ python3 run.py \
     --window_size 20 \
     --DPG_update_window_size 50 \
     --mode train \
-    --model_save_path ../model/DPG+LSTM+AMZN+EPAM+WBD\
+    --model_save_path ../model/DPG+LSTM+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD\
     --initial_balance 1000000 \
-    --replay_sample_distribution geometric > ../logs/train_DPG+LSTM+AMZN+EPAM+WBD.log 2>&1
+    --replay_sample_distribution geometric > ../logs/train_DPG+LSTM+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.log 2>&1
 
 python3 run.py \
     --agent DPG \
     --env ContinuousRealDataEnv1 \
     --network PolicyWeightLSTM \
-    --asset_codes AMZN EPAM WBD \
+    --asset_codes NVDA GOOGL MSFT AMZN EPAM WBD \
     --start_date 2022-11-01 \
     --end_date 2024-01-01 \
     --interval 1d \
@@ -175,8 +175,8 @@ python3 run.py \
     --window_size 20 \
     --mode test \
     --initial_balance 1000000 \
-    --model_load_path  ../model/DPG+LSTM+AMZN+EPAM+WBD/model_last_checkpoint.pth \
-    --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightLSTM+AMZN+EPAM+WBD.json > ../logs/test_DPG+LSTM+AMZN+EPAM+WBD.log 2>&1
+    --model_load_path  ../model/DPG+LSTM+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD/model_last_checkpoint.pth \
+    --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightLSTM+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.json > ../logs/test_DPG+LSTM+NVDA+GOOGL+MSFT+AMZN+EPAM+WBD.log 2>&1
 
 
 # python3 run.py \

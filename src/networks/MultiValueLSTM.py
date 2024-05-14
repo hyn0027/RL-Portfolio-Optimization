@@ -123,9 +123,9 @@ class LSTMEncoder(nn.Module):
         self.LSTM = nn.LSTM(
             input_size=5,
             hidden_size=args.LSTM_hidden_size,
-            proj_size=args.LSTM_output_size,
             num_layers=args.LSTM_layers,
         )
+        self.fc = nn.Linear(args.LSTM_hidden_size, args.LSTM_output_size)
 
     def forward(self, Xt: torch.Tensor) -> torch.Tensor:
         """the overridden forward method
@@ -138,6 +138,8 @@ class LSTMEncoder(nn.Module):
         """
         Xt = Xt.permute(2, 1, 0)
         _, (hn, _) = self.LSTM(Xt)
+        hn = self.fc(hn)
+        hn = torch.relu(hn)
         return hn.squeeze(0)
 
 

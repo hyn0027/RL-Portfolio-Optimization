@@ -164,15 +164,15 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
 
     def update(
         self,
-        action_weight: torch.Tensor,
-        state: Optional[Dict[str, Union[torch.Tensor, int]]],
+        action_weight: torch.Tensor = None,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
         modify_inner_state: Optional[bool] = None,
     ) -> Dict[str, Union[torch.Tensor, int]]:
         """
         update the environment
 
         Args:
-            action_weight (torch.Tensor): the action to perform, means the weight after trade
+            action_weight (torch.Tensor): the action to perform, means the weight after trade. Defaults to None.
             state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
             modify_inner_state (Optional[bool], optional): whether to modify the inner state. Defaults to None.
 
@@ -188,15 +188,12 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         if modify_inner_state is None:
             modify_inner_state = state is None
 
-        action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
-            self, portfolio_weight, action_weight, portfolio_value
-        )
-        # print("111")
-        # print(portfolio_weight)
-        # print(action_weight)
-        # print(portfolio_value)
-        # print(action)
-        # print("222")
+        if action_weight is None:
+            action = torch.zeros(self.asset_num, dtype=self.dtype, device=self.device)
+        else:
+            action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
+                self, portfolio_weight, action_weight, portfolio_value
+            )
         new_state = BaseEnv.update(self, action, state, modify_inner_state)
         if modify_inner_state:
             self.previous_weight = new_state["new_portfolio_weight_prev_day"]

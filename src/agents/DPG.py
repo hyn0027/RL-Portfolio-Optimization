@@ -114,6 +114,13 @@ class DPG(BaseAgent):
                 save_path,
             )
             logger.info(f"Model saved to {save_path}")
+            save_path = os.path.join(self.model_save_path, f"DPG_epoch{epoch}.pth")
+            logger.info(f"Saving model to {save_path}")
+            torch.save(
+                self.model.state_dict(),
+                save_path,
+            )
+            logger.info(f"Model saved to {save_path}")
 
     def _update_model(self) -> float:
         """update the model"""
