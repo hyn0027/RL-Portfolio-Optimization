@@ -87,6 +87,7 @@ python3 run.py \
     --mode train \
     --model_save_path ../model/DPG+CNN+AMZN+EPAM+WBD\
     --initial_balance 1000000 \
+    --replay_window 1000 \
     --replay_sample_distribution geometric > ../logs/train_DPG+CNN+AMZN+EPAM+WBD.log 2>&1
 
 python3 run.py \
@@ -102,6 +103,7 @@ python3 run.py \
     --window_size 20 \
     --mode test \
     --initial_balance 1000000 \
+    --replay_window 1000 \
     --model_load_path  ../model/DPG+CNN+AMZN+EPAM+WBD/model_last_checkpoint.pth \
     --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightCNN+AMZN+EPAM+WBD.json > ../logs/test_DPG+CNN+AMZN+EPAM+WBD.log 2>&1
 
@@ -124,6 +126,7 @@ python3 run.py \
     --mode train \
     --model_save_path ../model/DPG+RNN+AMZN+EPAM+WBD\
     --initial_balance 1000000 \
+    --replay_window 1000 \
     --replay_sample_distribution geometric > ../logs/train_DPG+RNN+AMZN+EPAM+WBD.log 2>&1
 
 python3 run.py \
@@ -139,6 +142,7 @@ python3 run.py \
     --window_size 20 \
     --mode test \
     --initial_balance 1000000 \
+    --replay_window 1000 \
     --model_load_path  ../model/DPG+RNN+AMZN+EPAM+WBD/model_last_checkpoint.pth \
     --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightRNN+AMZN+EPAM+WBD.json > ../logs/test_DPG+RNN+AMZN+EPAM+WBD.log 2>&1
 
@@ -160,6 +164,7 @@ python3 run.py \
     --mode train \
     --model_save_path ../model/DPG+LSTM+AMZN+EPAM+WBD\
     --initial_balance 1000000 \
+    --replay_window 1000 \
     --replay_sample_distribution geometric > ../logs/train_DPG+LSTM+AMZN+EPAM+WBD.log 2>&1
 
 python3 run.py \
@@ -175,6 +180,7 @@ python3 run.py \
     --window_size 20 \
     --mode test \
     --initial_balance 1000000 \
+    --replay_window 1000 \
     --model_load_path  ../model/DPG+LSTM+AMZN+EPAM+WBD/model_last_checkpoint.pth \
     --evaluator_saving_path ../evaluator/DPG+ContinuousRealDataEnv1+PolicyWeightLSTM+AMZN+EPAM+WBD.json > ../logs/test_DPG+LSTM+AMZN+EPAM+WBD.log 2>&1
 

@@ -1,5 +1,4 @@
 import argparse
-import os
 
 from utils.logging import set_up_logging, get_logger
 from agents import registered_agents

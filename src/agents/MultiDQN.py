@@ -187,10 +187,12 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                         if done:
                             break
                         experience_list.append(
-                            (state, possible_action_index, reward, new_state)
+                            (possible_action_index, reward, new_state)
                         )
                     if len(experience_list) > 0:
-                        self.replay.remember(experience_list)
+                        self.replay.remember(
+                            {"initial_state": state, "experience": experience_list}
+                        )
 
                     if random.random() < self.epsilon:
                         action_index = self.env.select_random_action()
@@ -241,11 +243,12 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         input = []
         target = []
         for L in K:
-            initial_state, _, _, new_state = L[0]
+            initial_state = L["initial_state"]
+            new_state = L["experience"][0][2]
             q_values = self.Q_network(initial_state, False)
             with torch.no_grad():
                 hn = self.target_Q_network(new_state, False, only_LSTM=True)
-            for _, action_index, reward, new_state in L:
+            for action_index, reward, new_state in L["experience"]:
                 new_state["hn"] = hn
                 with torch.no_grad():
                     target_q_values = self.target_Q_network(
@@ -302,6 +305,8 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         self.evaluator.output_record_to_json(
             os.path.join(self.evaluator_save_path, "model.json")
         )
+        if self.test_model_only:
+            return
 
         # buy and hold
         logger.info("Testing B&H")

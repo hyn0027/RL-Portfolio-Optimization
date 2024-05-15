@@ -571,16 +571,8 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         Returns:
             int: the momentum action
         """
-        current_price = self._get_price_tensor(self.time_index)
-        prev_price = self._get_price_tensor(self.time_index - 1)
-        action = torch.zeros(self.asset_num, dtype=torch.int32, device=self.device)
-        for asset_index in range(self.asset_num):
-            if current_price[asset_index] > prev_price[asset_index]:
-                action[asset_index] = 1
-            elif current_price[asset_index] < prev_price[asset_index]:
-                action[asset_index] = -1
+        action = super().get_momentum_action()
         action_index = self.find_action_index(action)
-
         # mapping
         action_index = self.action_mapping(
             action_index, torch.zeros(len(self.all_actions), device=self.device)

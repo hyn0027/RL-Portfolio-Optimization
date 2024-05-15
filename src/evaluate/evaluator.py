@@ -139,7 +139,13 @@ class Evaluator:
             ],
             "return_rate": self.return_rate,
             "asset_prices": [price.tolist() for price in self.asset_prices],
+            "CR": self.calculate_CR(),
+            "SR": self.calculate_SR(),
+            "SteR": self.calculate_SteR(),
+            "AT": self.calculate_AT(),
+            "MDD": self.calculate_MDD(),
         }
+        logger.info(f"Outputting record to {path}")
         with open(path, "w") as f:
             json.dump(record, f, indent=4)
 

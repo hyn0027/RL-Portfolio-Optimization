@@ -9,7 +9,7 @@ python3 run.py \
     --end_date 2023-01-01 \
     --interval 1d \
     --annual_sample 252 \
-    --device cuda \
+    --device cpu \
     --pretrain_epochs 0 \
     --train_batch_size 32 \
     --train_epochs 500 \
@@ -21,7 +21,7 @@ python3 run.py \
     --window_size 20 \
     --mode train \
     --model_save_path ../model/MultiDQN+AMZN+EPAM+WBD \
-    --replay_window 2000 \
+    --replay_window 1000 \
     --initial_balance 1000000 > ../logs/train_MultiDQN+AMZN+EPAM+WBD.log 2>&1
 
 # python3 run.py \

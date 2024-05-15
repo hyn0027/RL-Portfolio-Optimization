@@ -70,6 +70,11 @@ class BaseAgent(Generic[BaseEnv]):
             required=False,
             help="Path to save the evaluator",
         )
+        parser.add_argument(
+            "--test_model_only",
+            action="store_true",
+            help="Only test the model",
+        )
 
     def __init__(
         self,
@@ -99,6 +104,7 @@ class BaseAgent(Generic[BaseEnv]):
         self.dtype = torch.float16 if args.fp16 else torch.float32
         self.args = args
         self.test_mode = test_mode
+        self.test_model_only = args.test_model_only
 
         if not self.test_mode:
             self.model_save_path = args.model_save_path

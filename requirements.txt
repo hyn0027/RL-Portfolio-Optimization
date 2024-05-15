@@ -5,3 +5,5 @@ tqdm>=4.60
 sphinx==5.0.2
 setuptools>=57.0.0
 m2r2
+matplotlib>=3.4.2
+numpy>=1.21.0
