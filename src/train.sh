@@ -14,7 +14,7 @@ python3 run.py \
     --train_batch_size 32 \
     --train_epochs 500 \
     --pretrain_learning_rate 1e-5 \
-    --train_learning_rate 1e-5 \
+    --train_learning_rate 1e-3 \
     --episode_length 252 \
     --DQN_epsilon_decay 0.999 \
     --replay_sample_unique \
@@ -37,8 +37,8 @@ python3 run.py \
 #     --device cuda \
 #     --window_size 20 \
 #     --mode test \
-#     --model_load_path  ../model/MultiDQN+AMZN+EPAM+WBD/Q_net_last_checkpoint.pth \
-#     --evaluator_saving_path ../evaluator/MultiDQN+DiscreteRealDataEnv1+AMZN+EPAM+WBD.json > ../logs/test_MultiDQN+AMZN+EPAM+WBD.log 2>&1
+#     --model_load_path  ../model/MultiDQN+BTC-USD+ETH-USD+MATIC-USD/Q_net_last_checkpoint.pth \
+#     --evaluator_saving_path ../evaluator/MultiDQN+DiscreteRealDataEnv1+BTC-USD+ETH-USD+MATIC-USD.json > ../logs/test_MultiDQN+BTC-USD+ETH-USD+MATIC-USD.log 2>&1
 
 # python3 run.py \
 #     --agent DQN \

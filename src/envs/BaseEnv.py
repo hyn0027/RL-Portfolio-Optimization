@@ -72,6 +72,12 @@ class BaseEnv:
             default=100,
             help="the maximum iteration number",
         )
+        parser.add_argument(
+            "--trading_size",
+            type=float,
+            default=1e4,
+            help="the size of each trading in terms of currency",
+        )
 
     def __init__(
         self,
@@ -115,6 +121,10 @@ class BaseEnv:
             args.iteration_epsilon, dtype=torch.float32, device=self.device
         )
         self.iteration_max_iter: int = args.iteration_max_iter
+
+        self.trading_size = torch.tensor(
+            args.trading_size, dtype=self.dtype, device=self.device
+        )
 
         self.initialize_weight()
 
@@ -160,6 +170,7 @@ class BaseEnv:
         )
         self.transaction_cost_base = self.transaction_cost_base.to(self.device)
         self.iteration_epsilon = self.iteration_epsilon.to(self.device)
+        self.trading_size = self.trading_size.to(self.device)
 
     def train_time_range(self) -> range:
         """the range of time indices, should be overridden by specific environments
@@ -479,7 +490,6 @@ class BaseEnv:
                 the new portfolio value, the new portfolio value at the next day,
                 and the portfolio value at the next day with static weight
         """
-        # print("---compute")
         if state is None:
             time_index = self.time_index
             portfolio_weight = self.portfolio_weight
@@ -491,27 +501,10 @@ class BaseEnv:
             portfolio_value = state["portfolio_value"]
             rf_weight = state["rf_weight"]
 
-        # print("current value:", "{:.3f}".format(self.portfolio_value.tolist()))
-        # print("current portfolio weight:", end=" ")
-        # print("[", end="")
-        # print(
-        #     ", ".join(["{:.3f}".format(num) for num in self.portfolio_weight.tolist()]),
-        #     end="",
-        # )
-        # print("]")
-
         # get portfolio weight after trading
         new_portfolio_weight = portfolio_weight + trading_size / portfolio_value
-        # print("new_portfolio_weight:", end=" ")
-        # print("[", end="")
-        # print(
-        #     ", ".join(["{:.3f}".format(num) for num in new_portfolio_weight.tolist()]),
-        #     end="",
-        # )
-        # print("]")
         # add transaction cost
         transaction_cost = self._transaction_cost(trading_size)
-        # print("transaction_cost:", "{:.3f}".format(transaction_cost.tolist()))
         new_portfolio_value = portfolio_value - transaction_cost
         new_portfolio_weight = (
             new_portfolio_weight * portfolio_value / new_portfolio_value
@@ -519,37 +512,13 @@ class BaseEnv:
         new_rf_weight = torch.tensor(
             1.0, dtype=self.dtype, device=self.device
         ) - torch.sum(new_portfolio_weight)
-        # print(
-        #     "portfolio value after transaction:",
-        #     "{:.3f}".format(new_portfolio_value.tolist()),
-        # )
-        # print("portfolio weight after transaction:", end=" ")
-        # print("[", end="")
-        # print(
-        #     ", ".join(["{:.3f}".format(num) for num in new_portfolio_weight.tolist()]),
-        #     end="",
-        # )
-        # print("]")
-        # print("rf weight after transaction:", "{:.3f}".format(new_rf_weight.tolist()))
 
         # changing to the next day
-        # portfolio_value = value * (price change vec * portfolio_weight + rf_weight * (rf + 1))
         price_change_rate = self._get_price_change_ratio_tensor(time_index + 1)
-        # print("price_change_rate:", end=" ")
-        # print("[", end="")
-        # print(
-        #     ", ".join(["{:.3f}".format(num) for num in price_change_rate.tolist()]),
-        #     end="",
-        # )
-        # print("]")
         new_portfolio_value_next_day = new_portfolio_value * (
             torch.sum(price_change_rate * new_portfolio_weight)
             + new_rf_weight * (self.rf_return + 1.0)
         )
-        # print(
-        #     "new_portfolio_value_next_day:",
-        #     "{:.3f}".format(new_portfolio_value_next_day.tolist()),
-        # )
         # adjust weight based on new value
         new_portfolio_weight_next_day = (
             price_change_rate
@@ -557,15 +526,6 @@ class BaseEnv:
             * new_portfolio_value
             / new_portfolio_value_next_day
         )
-        # print("new_portfolio_weight_next_day:", end=" ")
-        # print("[", end="")
-        # print(
-        #     ", ".join(
-        #         ["{:.3f}".format(num) for num in new_portfolio_weight_next_day.tolist()]
-        #     ),
-        #     end="",
-        # )
-        # print("]")
         new_rf_weight_next_day = torch.tensor(
             1.0, dtype=self.dtype, device=self.device
         ) - torch.sum(new_portfolio_weight_next_day)
@@ -574,9 +534,6 @@ class BaseEnv:
             torch.sum(price_change_rate * portfolio_weight)
             + rf_weight * (self.rf_return + 1.0)
         )
-        # print(
-        #     "static_portfolio_value:", "{:.3f}".format(static_portfolio_value.tolist())
-        # )
         return (
             new_portfolio_weight,
             new_portfolio_weight_next_day,
@@ -647,3 +604,25 @@ class BaseEnv:
             torch.Tensor: the random action
         """
         raise NotImplementedError("select_random_action not implemented")
+
+    def get_momentum_action(self) -> torch.Tensor:
+        """get the momentum action, should be overridden by specific environments
+
+        Raises:
+            NotImplementedError: get_momentum_action not implemented
+
+        Returns:
+            torch.Tensor: the momentum action
+        """
+        raise NotImplementedError("get_momentum_action not implemented")
+
+    def get_reverse_momentum_action(self) -> torch.Tensor:
+        """get the reverse momentum action, should be overridden by specific environments
+
+        Raises:
+            NotImplementedError: get_reverse_momentum_action not implemented
+
+        Returns:
+            torch.Tensor: the reverse momentum action
+        """
+        raise NotImplementedError("get_reverse_momentum_action not implemented")

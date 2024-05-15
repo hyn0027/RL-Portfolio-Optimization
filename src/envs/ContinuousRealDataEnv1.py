@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple, List, Union
 from utils.logging import get_logger
 
 import torch
+import copy
 
 
 from envs import register_env
@@ -208,3 +209,56 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         ]
         ret_state["prev_price"] = new_state["prev_price"]
         return ret_state
+
+    def select_random_action(self) -> torch.Tensor:
+        """select a random action
+
+        Returns:
+            torch.Tensor: the random action
+        """
+        rand_weight = torch.rand(self.asset_num, dtype=self.dtype, device=self.device)
+        return torch.nn.functional.softmax(rand_weight)
+
+    def get_momentum_action(self) -> torch.Tensor:
+        """get the momentum action
+
+        Returns:
+            torch.Tensor: the momentum action
+        """
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        original_add_num = 0.3 / self.asset_num
+        add_num = 0.3 / self.asset_num
+        while True:
+            action = copy.deepcopy(self.portfolio_weight)
+            for asset_index in range(self.asset_num):
+                if current_price[asset_index] > prev_price[asset_index]:
+                    action[asset_index] += add_num
+                elif current_price[asset_index] < prev_price[asset_index]:
+                    action[asset_index] -= original_add_num
+            action = torch.clamp(action, 0, 1)
+            if torch.sum(action) <= 1.0:
+                return action
+            add_num /= 2
+
+    def get_reverse_momentum_action(self) -> torch.Tensor:
+        """get the reverse momentum action
+
+        Returns:
+            torch.Tensor: the reverse momentum action
+        """
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        add_num = 0.3 / self.asset_num
+
+        while True:
+            action = copy.deepcopy(self.portfolio_weight)
+            for asset_index in range(self.asset_num):
+                if current_price[asset_index] > prev_price[asset_index]:
+                    action[asset_index] -= add_num
+                elif current_price[asset_index] < prev_price[asset_index]:
+                    action[asset_index] += add_num
+            action = torch.clamp(action, 0, 1)
+            if torch.sum(action) <= 1:
+                return action
+            add_num /= 2

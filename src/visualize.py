@@ -195,6 +195,8 @@ def main() -> None:
             "Reversal": os.path.join(last_checkpoint_path, "reverse_momentum.json"),
             "Random": os.path.join(last_checkpoint_path, "random.json"),
         }
+        if not os.path.exists(args.output_path):
+            os.makedirs(args.output_path)
         visualize_list(visualization_list, os.path.join(args.output_path, "result.png"))
         visualize_across_epoch(
             args.visualize_single_path,
@@ -203,6 +205,8 @@ def main() -> None:
     elif args.visualize_mode == "json":
         logger.info("get the visualization list")
         visualization_list = get_visualization_list(args.visualization_json_path)
+        if not os.path.exists(args.output_path):
+            os.makedirs(args.output_path)
         visualize_list(visualization_list, os.path.join(args.output_path, "result.png"))
 
 

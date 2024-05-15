@@ -73,7 +73,7 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         for episode in range(0, self.episode_num):
             prob = (
                 beta
-                * (1 - beta) ** (self.episode_num - episode - 1)
+                * ((1 - beta) ** (self.episode_num - episode - 1))
                 / (1 - (1 - beta) ** self.episode_num)
             )
             if episode == 0:
@@ -128,6 +128,8 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
             [kc_matrix, ko_matrix, kh_matrix, kl_matrix, kv_matrix], dim=0
         )
         self.Xt_matrix[torch.isnan(self.Xt_matrix)] = 0
+        self.Xt_matrix[torch.isinf(self.Xt_matrix)] = 1
+        self.Xt_matrix *= 1000
 
         logger.info("DiscreteRealDataEnv1 initialized")
 
@@ -135,7 +137,6 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         super().to(device)
         self.accumulated_prob = self.accumulated_prob.to(self.device)
         self.Xt_matrix = self.Xt_matrix.to(self.device)
-        self.price_change_matrix = self.price_change_matrix.to(self.device)
 
     def sample_distribution_and_set_episode(self) -> int:
         """sample a distribution and set the episode accordingly
@@ -254,7 +255,7 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
             portfolio_value: torch.Tensor = state["portfolio_value"]
 
         return {
-            "Xt_Matrix": self._get_Xt_state(time_index=time_index) * 100,
+            "Xt_Matrix": self._get_Xt_state(time_index=time_index),
             "Portfolio_Weight": self._concat_weight(portfolio_weight, rf_weight),
             "time_index": time_index,
             "portfolio_weight": portfolio_weight,
@@ -573,6 +574,7 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         """
         action = super().get_momentum_action()
         action_index = self.find_action_index(action)
+
         # mapping
         action_index = self.action_mapping(
             action_index, torch.zeros(len(self.all_actions), device=self.device)
@@ -585,14 +587,7 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         Returns:
             int: the reverse momentum action
         """
-        current_price = self._get_price_tensor(self.time_index)
-        prev_price = self._get_price_tensor(self.time_index - 1)
-        action = torch.zeros(self.asset_num, dtype=torch.int32, device=self.device)
-        for asset_index in range(self.asset_num):
-            if current_price[asset_index] > prev_price[asset_index]:
-                action[asset_index] = -1
-            elif current_price[asset_index] < prev_price[asset_index]:
-                action[asset_index] = 1
+        action = super().get_reverse_momentum_action()
         action_index = self.find_action_index(action)
 
         # mapping

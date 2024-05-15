@@ -171,3 +171,46 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
         ]
         ret_state["prev_price"] = new_state["prev_price"]
         return ret_state
+
+    def select_random_action(self) -> torch.Tensor:
+        """select a random action
+
+        Returns:
+            torch.Tensor: the random action
+        """
+        return (
+            torch.randn(self.asset_num, dtype=self.dtype, device=self.device)
+            * self.trading_size
+        )
+
+    def get_momentum_action(self) -> torch.Tensor:
+        """get the momentum action
+
+        Returns:
+            torch.Tensor: the momentum action
+        """
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        action = torch.zeros(self.asset_num, dtype=torch.float32, device=self.device)
+        for asset_index in range(self.asset_num):
+            if current_price[asset_index] > prev_price[asset_index]:
+                action[asset_index] = self.trading_size
+            elif current_price[asset_index] < prev_price[asset_index]:
+                action[asset_index] = -self.trading_size
+        return action
+
+    def get_reverse_momentum_action(self) -> torch.Tensor:
+        """get the reverse momentum action
+
+        Returns:
+            torch.Tensor: the reverse momentum action
+        """
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        action = torch.zeros(self.asset_num, dtype=torch.float32, device=self.device)
+        for asset_index in range(self.asset_num):
+            if current_price[asset_index] > prev_price[asset_index]:
+                action[asset_index] = -self.trading_size
+            elif current_price[asset_index] < prev_price[asset_index]:
+                action[asset_index] = self.trading_size
+        return action

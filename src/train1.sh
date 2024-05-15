@@ -76,7 +76,7 @@ python3 run.py \
     --asset_codes AMZN EPAM WBD \
     --start_date 2017-11-01 \
     --end_date 2023-01-01 \
-    --train_learning_rate 3e-5 \
+    --train_learning_rate 1e-5 \
     --interval 1d \
     --annual_sample 252 \
     --device cpu \
@@ -115,7 +115,7 @@ python3 run.py \
     --asset_codes AMZN EPAM WBD \
     --start_date 2017-11-01 \
     --end_date 2023-01-01 \
-    --train_learning_rate 3e-5 \
+    --train_learning_rate 1e-5 \
     --interval 1d \
     --annual_sample 252 \
     --device cpu \
@@ -153,7 +153,7 @@ python3 run.py \
     --asset_codes AMZN EPAM WBD \
     --start_date 2017-11-01 \
     --end_date 2023-01-01 \
-    --train_learning_rate 3e-5 \
+    --train_learning_rate 1e-5 \
     --interval 1d \
     --annual_sample 252 \
     --device cpu \

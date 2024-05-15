@@ -286,16 +286,15 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
                 action_q_value = self.Q_network(state, False)
                 action_index = int(torch.argmax(action_q_value).item())
                 action_index = self.env.action_mapping(action_index, action_q_value)
-            new_state, _, _ = self.env.act(action_index)
             portfolio_value = self.env.portfolio_value.item()
             portfolio_weight_before_trade = self.env.portfolio_weight
+            new_state = self.env.update(action_index)
             portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
             self.evaluator.push(
                 portfolio_value,
                 (portfolio_weight_before_trade, portfolio_weight_after_trade),
                 new_state["prev_price"],
             )
-            self.env.update(action_index)
             progress_bar.update(1)
         progress_bar.close()
         logger.info("Model Results:")
@@ -316,9 +315,9 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         time_indices = self.env.test_time_range()
         progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
         for _ in time_indices:
-            new_state = self.env.update()
             portfolio_value = self.env.portfolio_value.item()
             portfolio_weight_before_trade = self.env.portfolio_weight
+            new_state = self.env.update()
             portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
             self.evaluator.push(
                 portfolio_value,
@@ -333,7 +332,7 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
             os.path.join(self.evaluator_save_path, "B&H.json")
         )
 
-        # buy and hold
+        # random
         logger.info("Testing Random")
         self.env.set_episode_for_testing()
         self.env.reset()
@@ -342,9 +341,9 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
         for _ in time_indices:
             action = self.env.select_random_action()
-            new_state = self.env.update(action)
             portfolio_value = self.env.portfolio_value.item()
             portfolio_weight_before_trade = self.env.portfolio_weight
+            new_state = self.env.update(action)
             portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
             self.evaluator.push(
                 portfolio_value,
@@ -368,9 +367,9 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
         for _ in time_indices:
             action = self.env.get_momentum_action()
-            new_state = self.env.update(action)
             portfolio_value = self.env.portfolio_value.item()
             portfolio_weight_before_trade = self.env.portfolio_weight
+            new_state = self.env.update(action)
             portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
             self.evaluator.push(
                 portfolio_value,
@@ -394,9 +393,9 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
         for _ in time_indices:
             action = self.env.get_reverse_momentum_action()
-            new_state = self.env.update(action)
             portfolio_value = self.env.portfolio_value.item()
             portfolio_weight_before_trade = self.env.portfolio_weight
+            new_state = self.env.update(action)
             portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
             self.evaluator.push(
                 portfolio_value,

@@ -19,12 +19,6 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(BasicDiscreteRealDataEnv, BasicDiscreteRealDataEnv).add_args(parser)
-        parser.add_argument(
-            "--trading_size",
-            type=float,
-            default=1e4,
-            help="the size of each trading in terms of currency",
-        )
 
     def __init__(
         self,
@@ -42,10 +36,6 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         logger.info("Initializing BasicDiscreteRealDataEnv")
         super().__init__(args, data, device)
 
-        self.trading_size = torch.tensor(
-            args.trading_size, dtype=self.dtype, device=self.device
-        )
-
         self.all_actions = []
         action_number = range(-1, 2)  # -1, 0, 1
         for action in product(action_number, repeat=self.asset_num):
@@ -62,7 +52,6 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
             device (torch.device): the device to move to
         """
         super().to(device)
-        self.trading_size = self.trading_size.to(self.device)
         self.all_actions = [a.to(self.device) for a in self.all_actions]
 
     def find_action_index(self, action: torch.Tensor) -> int:
@@ -188,4 +177,12 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         Returns:
             torch.Tensor: the reverse momentum action
         """
-        return -self.get_momentum_action()
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        action = torch.zeros(self.asset_num, dtype=torch.int32, device=self.device)
+        for asset_index in range(self.asset_num):
+            if current_price[asset_index] > prev_price[asset_index]:
+                action[asset_index] = -1
+            elif current_price[asset_index] < prev_price[asset_index]:
+                action[asset_index] = 1
+        return action
