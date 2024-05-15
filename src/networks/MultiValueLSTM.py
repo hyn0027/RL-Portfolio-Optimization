@@ -91,23 +91,40 @@ class MultiValueLSTM(nn.Module):
         self.asset_num = len(args.asset_codes)
         self.DNN = DNN(args)
 
-    def forward(self, state: Dict[str, torch.Tensor], pretrain: bool) -> torch.Tensor:
+    def forward(
+        self,
+        state: Dict[str, torch.Tensor],
+        pretrain: bool,
+        only_LSTM: bool = False,
+        no_LSTM: bool = False,
+    ) -> torch.Tensor:
         """the overridden forward method
 
         Args:
             state (Dict[str, torch.Tensor]): the state dictionary, including "Xt_Matrix" and "Portfolio_Weight"
             pretrain (bool): is this a pretrain step or not
+            only_LSTM (bool): only use the LSTM encoder
+            no_LSTM (bool): do not use the LSTM encoder
 
         Returns:
             torch.Tensor: the output tensor
         """
-        Xt = state["Xt_Matrix"]
-        wt = state["Portfolio_Weight"]
-        hn = self.encoder(Xt)
-        # hn has size [asset_num, LSTM_output_size]
-        if pretrain:
-            return self.decoder(hn)
-        return self.DNN(hn, wt)
+        if only_LSTM:
+            Xt = state["Xt_Matrix"]
+            hn = self.encoder(Xt)
+            return hn
+        elif no_LSTM:
+            wt = state["Portfolio_Weight"]
+            hn = state["hn"]
+            return self.DNN(hn, wt)
+        else:
+            Xt = state["Xt_Matrix"]
+            wt = state["Portfolio_Weight"]
+            hn = self.encoder(Xt)
+            # hn has size [asset_num, LSTM_output_size]
+            if pretrain:
+                return self.decoder(hn)
+            return self.DNN(hn, wt)
 
 
 class LSTMEncoder(nn.Module):

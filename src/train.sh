@@ -13,7 +13,8 @@ python3 run.py \
     --pretrain_epochs 0 \
     --train_batch_size 32 \
     --train_epochs 500 \
-    --train_learning_rate 1e-7 \
+    --pretrain_learning_rate 1e-5 \
+    --train_learning_rate 1e-5 \
     --episode_length 252 \
     --DQN_epsilon_decay 0.999 \
     --replay_sample_unique \

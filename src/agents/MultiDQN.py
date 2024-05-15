@@ -232,31 +232,36 @@ class MultiDQN(DQN[DiscreteRealDataEnv1]):
         Returns:
             float: the training loss
         """
-        self.Q_network.train()
         if not self.replay.has_enough_samples():
             return float("nan")
+        self.train_optimizer.zero_grad()
+        self.Q_network.train()
         K = self.replay.sample()
-        loss = None
         mse_loss = nn.MSELoss()
+        input = []
+        target = []
         for L in K:
-            for state, action_index, reward, new_state in L:
+            initial_state, _, _, new_state = L[0]
+            q_values = self.Q_network(initial_state, False)
+            with torch.no_grad():
+                hn = self.target_Q_network(new_state, False, only_LSTM=True)
+            for _, action_index, reward, new_state in L:
+                new_state["hn"] = hn
                 with torch.no_grad():
-                    target_q_values = self.target_Q_network(new_state, False)
-                    best_action_index = int(torch.argmax(target_q_values).item())
-                    best_action_index = self.env.action_mapping(
-                        best_action_index, target_q_values, new_state
+                    target_q_values = self.target_Q_network(
+                        new_state, False, no_LSTM=True
                     )
-                    target_q_value = (
-                        reward + self.gamma * target_q_values[best_action_index]
-                    )
-                q_value = self.Q_network(state, False)[action_index]
-                if loss is None:
-                    loss = mse_loss(q_value, target_q_value)
-                else:
-                    loss += mse_loss(q_value, target_q_value)
+                best_action_index = int(torch.argmax(target_q_values).item())
+                best_action_index = self.env.action_mapping(
+                    best_action_index, target_q_values, new_state
+                )
+                input.append(q_values[action_index])
+                target.append(reward + self.gamma * target_q_values[best_action_index])
+        input = torch.stack(input, dim=0)
+        target = torch.stack(target, dim=0)
+        loss = mse_loss(input, target)
         loss.backward()
         self.train_optimizer.step()
-        self.train_optimizer.zero_grad()
         self.Q_network.eval()
         return loss.item()
 
