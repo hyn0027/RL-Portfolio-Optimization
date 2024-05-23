@@ -140,7 +140,8 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         Returns:
             torch.Tensor: the random action
         """
-        return self.all_actions[random.randint(0, len(self.all_actions) - 1)]
+        possible_actions = self.possible_actions()
+        return random.choice(possible_actions)
 
     def possible_actions(
         self, state: Dict[str, torch.Tensor] = None

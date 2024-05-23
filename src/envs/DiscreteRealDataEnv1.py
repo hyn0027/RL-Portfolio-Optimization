@@ -61,12 +61,18 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         self.episode_range.reverse()
         self.episode_num = len(self.episode_range)
         if self.episode_num == 0:
-            raise ValueError("no valid episode range found")
-
-        self.time_index = self.episode_range[0]["start_time_index"]
-        self.start_time_index = self.episode_range[0]["start_time_index"]
-        self.end_time_index = self.episode_range[0]["end_time_index"]
-        self.episode = 0
+            logger.warning(
+                "Episode_num is 0, please check the episode_length. This will not cause error in testing mode."
+            )
+            self.episode = -1
+            self.start_time_index = self.window_size
+            self.end_time_index = self.data.time_dimension() - 1
+            self.time_index = self.start_time_index
+        else:
+            self.time_index = self.episode_range[0]["start_time_index"]
+            self.start_time_index = self.episode_range[0]["start_time_index"]
+            self.end_time_index = self.episode_range[0]["end_time_index"]
+            self.episode = 0
 
         beta: float = args.distribution_beta
         self.accumulated_prob = []
@@ -124,12 +130,29 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         kh_matrix = torch.stack(kh_list, dim=1)
         kl_matrix = torch.stack(kl_list, dim=1)
         kv_matrix = torch.stack(kv_list, dim=1)
+        kc_matrix[torch.isnan(kc_matrix)] = 0
+        ko_matrix[torch.isnan(ko_matrix)] = 0
+        kh_matrix[torch.isnan(kh_matrix)] = 0
+        kl_matrix[torch.isnan(kl_matrix)] = 0
+        kv_matrix[torch.isnan(kv_matrix)] = 0
+        kc_matrix[torch.isinf(kc_matrix)] = 1
+        ko_matrix[torch.isinf(ko_matrix)] = 1
+        kh_matrix[torch.isinf(kh_matrix)] = 1
+        kl_matrix[torch.isinf(kl_matrix)] = 1
+        kv_matrix[torch.isinf(kv_matrix)] = 1
+        # print(kc_matrix.mean(), kc_matrix.std())
+        # print(ko_matrix.mean(), ko_matrix.std())
+        # print(kh_matrix.mean(), kh_matrix.std())
+        # print(kl_matrix.mean(), kl_matrix.std())
+        # print(kv_matrix.mean(), kv_matrix.std())
+        kc_matrix = (kc_matrix - 0.0004) / 0.0125
+        ko_matrix = (ko_matrix - 0.0002) / 0.0046
+        kh_matrix = (kh_matrix + 0.0058) / 0.0075
+        kl_matrix = (kl_matrix - 0.0066) / 0.0073
+        kv_matrix = (kv_matrix - 0.0226) / 0.2449
         self.Xt_matrix = torch.stack(
             [kc_matrix, ko_matrix, kh_matrix, kl_matrix, kv_matrix], dim=0
         )
-        self.Xt_matrix[torch.isnan(self.Xt_matrix)] = 0
-        self.Xt_matrix[torch.isinf(self.Xt_matrix)] = 1
-        self.Xt_matrix *= 1000
 
         logger.info("DiscreteRealDataEnv1 initialized")
 
@@ -185,7 +208,10 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         Returns:
             List: the list of time indices
         """
-        range_list = list(range(self.window_size + 100, self.data.time_dimension() - 1))
+        range_list = []
+        for i in range(self.window_size, self.data.time_dimension() - 1):
+            # if i % 10 != 0:
+            range_list.append(i)
         if shuffle:
             random.shuffle(range_list)
         return range_list
@@ -196,7 +222,11 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         Returns:
             range: the list of time indices
         """
-        return range(self.window_size, self.window_size + 100)
+        range_list = []
+        for i in range(self.window_size, self.data.time_dimension() - 1):
+            if i % 10 == 0:
+                range_list.append(i)
+        return range_list
 
     def state_dimension(self) -> Dict[str, torch.Size]:
         """the dimension of the state tensors, including Xt_Matrix and Portfolio_Weight
@@ -324,7 +354,7 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
             * 100
         )
         new_state.pop("static_portfolio_value", None)
-        done = self.time_index == self.data.time_dimension() - 1
+        done = self.time_index >= self.end_time_index - 1
 
         return new_state, reward, done
 
@@ -456,14 +486,14 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         self,
         action_index: int,
         Q_Values: torch.Tensor,
-        state: Dict[str, torch.Tensor] = {},
+        state: Optional[Dict[str, torch.Tensor]] = None,
     ) -> int:
         """perform action mapping based on the Q values
 
         Args:
             action_index (int): the index of the action to map
             Q_Values (torch.Tensor): the Q values of all actions
-            state (Dict[str, torch.Tensor]): the state tensors. Defaults to {}.
+            state (Optional[Dict[str, torch.Tensor]], optional): the state tensors. Defaults to None.
 
         Raises:
             ValueError: action not valid
@@ -471,7 +501,7 @@ class DiscreteRealDataEnv1(BasicDiscreteRealDataEnv):
         Returns:
             int: the index of the mapped action
         """
-        if len(state) > 0:
+        if state is not None:
             portfolio_weight = state["portfolio_weight"]
             portfolio_value = state["portfolio_value"]
             rf_weight = state["rf_weight"]

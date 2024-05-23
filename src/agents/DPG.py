@@ -60,14 +60,6 @@ class DPG(BaseAgent):
             logger.info(self.model)
             total_params = sum(p.numel() for p in self.model.parameters())
             logger.info(f"Total number of parameters: {total_params}")
-
-            self.replay = Replay(args)
-
-            self.train_optimizer = torch.optim.Adam(
-                self.model.parameters(), lr=args.train_learning_rate
-            )
-            self.update_window_size: int = args.DPG_update_window_size
-            self.train_optimizer.zero_grad()
         else:
             self.model: nn.Module = registered_networks[args.network](args)
             logger.info(self.model)
@@ -84,6 +76,15 @@ class DPG(BaseAgent):
             self.evaluator_save_path = args.evaluator_saving_path
 
             self.model.to(self.device)
+        self.train_optimizer = torch.optim.Adam(
+            self.model.parameters(), lr=args.train_learning_rate
+        )
+        self.train_optimizer.zero_grad()
+        self.train_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            self.train_optimizer, gamma=0.999999
+        )
+        self.replay = Replay(args)
+        self.update_window_size: int = args.DPG_update_window_size
 
         logger.info("DPG agent initialized")
 
@@ -91,6 +92,13 @@ class DPG(BaseAgent):
         """train the DPG agent"""
         self.model.eval()
         self.replay.reset()
+        save_path = os.path.join(self.model_save_path, f"DPG_epoch0.pth")
+        logger.info(f"Saving model to {save_path}")
+        torch.save(
+            self.model.state_dict(),
+            save_path,
+        )
+        logger.info(f"Model saved to {save_path}")
         for epoch in range(self.train_epochs):
             self.env.reset()
             time_indices = self.env.train_time_range()
@@ -104,8 +112,9 @@ class DPG(BaseAgent):
                 self._update_model()
                 progress_bar.update(1)
             progress_bar.close()
+            lr = self.train_scheduler.get_last_lr()[0]
             logger.info(
-                f"Finish epoch {epoch + 1}/{self.train_epochs}, portfolio value: {self.env.portfolio_value:.5f}"
+                f"Finish epoch {epoch + 1}/{self.train_epochs}, portfolio value: {self.env.portfolio_value:.5f}, learning rate: {lr}"
             )
             save_path = os.path.join(self.model_save_path, f"model_last_checkpoint.pth")
             logger.info(f"Saving model to {save_path}")
@@ -114,7 +123,7 @@ class DPG(BaseAgent):
                 save_path,
             )
             logger.info(f"Model saved to {save_path}")
-            save_path = os.path.join(self.model_save_path, f"DPG_epoch{epoch}.pth")
+            save_path = os.path.join(self.model_save_path, f"DPG_epoch{epoch + 1}.pth")
             logger.info(f"Saving model to {save_path}")
             torch.save(
                 self.model.state_dict(),
@@ -124,10 +133,10 @@ class DPG(BaseAgent):
 
     def _update_model(self) -> float:
         """update the model"""
-        self.model.train()
-        self.train_optimizer.zero_grad()
         if not self.replay.has_enough_samples(interval=self.update_window_size):
             return float("nan")
+        self.model.train()
+        self.train_optimizer.zero_grad()
         states = self.replay.sample(interval=self.update_window_size)
         loss = torch.tensor(
             self.update_window_size, dtype=self.dtype, device=self.device
@@ -136,9 +145,13 @@ class DPG(BaseAgent):
             for _ in range(self.update_window_size):
                 action = self.model(state)
                 state, reward, _ = self.env.act(action, state)
-                loss += -reward
+                if loss is None:
+                    loss = -reward
+                else:
+                    loss += -reward
         loss.backward()
         self.train_optimizer.step()
+        self.train_scheduler.step()
         self.model.eval()
         return loss.item()
 
@@ -147,21 +160,27 @@ class DPG(BaseAgent):
         logger.info("Testing Model")
         self.model.eval()
         self.env.reset()
+        self.replay.reset()
         self.evaluator.reset()
         time_indices = self.env.test_time_range()
         progress_bar = tqdm(total=len(time_indices), position=0, leave=True)
         for _ in time_indices:
-            state = self.env.get_state()
-            action = self.model(state)
-            portfolio_value = self.env.portfolio_value.item()
-            portfolio_weight_before_trade = self.env.portfolio_weight
-            new_state = self.env.update(action)
-            portfolio_weight_after_trade = new_state["new_portfolio_weight_prev_day"]
-            self.evaluator.push(
-                portfolio_value,
-                (portfolio_weight_before_trade, portfolio_weight_after_trade),
-                new_state["prev_price"],
-            )
+            with torch.no_grad():
+                state = self.env.get_state()
+                self.replay.remember(state)
+                action = self.model(state)
+                portfolio_value = self.env.portfolio_value.item()
+                portfolio_weight_before_trade = self.env.portfolio_weight
+                new_state = self.env.update(action)
+                portfolio_weight_after_trade = new_state[
+                    "new_portfolio_weight_prev_day"
+                ]
+                self.evaluator.push(
+                    portfolio_value,
+                    (portfolio_weight_before_trade, portfolio_weight_after_trade),
+                    new_state["prev_price"],
+                )
+            self._update_model()
             progress_bar.update(1)
         progress_bar.close()
         logger.info("Model Results:")

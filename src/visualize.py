@@ -117,60 +117,64 @@ def visualize_across_epoch(base_path: str, save_path: str) -> None:
             MDD_list.append(data["MDD"])
         epoch_num += 1
 
+    window_size = 1
+
+    def moving_average(data):
+        return np.convolve(data, np.ones(window_size) / window_size, mode="valid")
+
     plt.clf()
     plt.plot(CR_list, label="CR")
+    moving_avg = moving_average(CR_list)
     x = np.arange(len(CR_list))
-    coefficients = np.polyfit(x, CR_list, 3)
-    quadratic_fit = np.poly1d(coefficients)
-    x_fit = np.linspace(x.min(), x.max(), 500)
-    y_fit = quadratic_fit(x_fit)
-    plt.plot(x_fit, y_fit, label="Fit", linestyle="--")
+    plt.plot(
+        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+    )
     plt.legend()
     plt.savefig(os.path.join(save_path, "CR.png"))
 
     plt.clf()
     plt.plot(SR_list, label="SR")
+    moving_avg = moving_average(SR_list)
     x = np.arange(len(SR_list))
-    coefficients = np.polyfit(x, SR_list, 3)
-    quadratic_fit = np.poly1d(coefficients)
-    x_fit = np.linspace(x.min(), x.max(), 500)
-    y_fit = quadratic_fit(x_fit)
-    plt.plot(x_fit, y_fit, label="Fit", linestyle="--")
+    plt.plot(
+        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+    )
     plt.legend()
     plt.savefig(os.path.join(save_path, "SR.png"))
 
     plt.clf()
     plt.plot(SteR_list, label="SteR")
+    moving_avg = moving_average(SteR_list)
     x = np.arange(len(SteR_list))
-    coefficients = np.polyfit(x, SteR_list, 3)
-    quadratic_fit = np.poly1d(coefficients)
-    x_fit = np.linspace(x.min(), x.max(), 500)
-    y_fit = quadratic_fit(x_fit)
-    plt.plot(x_fit, y_fit, label="Fit", linestyle="--")
+    plt.plot(
+        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+    )
     plt.legend()
     plt.savefig(os.path.join(save_path, "SteR.png"))
 
     plt.clf()
     plt.plot(AT_list, label="AT")
+    moving_avg = moving_average(AT_list)
     x = np.arange(len(AT_list))
-    coefficients = np.polyfit(x, AT_list, 3)
-    quadratic_fit = np.poly1d(coefficients)
-    x_fit = np.linspace(x.min(), x.max(), 500)
-    y_fit = quadratic_fit(x_fit)
-    plt.plot(x_fit, y_fit, label="Fit", linestyle="--")
+    plt.plot(
+        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+    )
     plt.legend()
     plt.savefig(os.path.join(save_path, "AT.png"))
 
     plt.clf()
     plt.plot(MDD_list, label="MDD")
+    moving_avg = moving_average(MDD_list)
     x = np.arange(len(MDD_list))
-    coefficients = np.polyfit(x, MDD_list, 3)
-    quadratic_fit = np.poly1d(coefficients)
-    x_fit = np.linspace(x.min(), x.max(), 500)
-    y_fit = quadratic_fit(x_fit)
-    plt.plot(x_fit, y_fit, label="Fit", linestyle="--")
+    plt.plot(
+        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+    )
     plt.legend()
     plt.savefig(os.path.join(save_path, "MDD.png"))
+
+    logger.info(f"highest CR at epoch {np.argmax(CR_list)}")
+    logger.info(f"highest SR at epoch {np.argmax(SR_list)}")
+    logger.info(f"highest SteR at epoch {np.argmax(SteR_list)}")
 
 
 def main() -> None:

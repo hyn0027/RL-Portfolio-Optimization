@@ -142,23 +142,14 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         if state is None:
             time_index = self.time_index
             previous_value = self.previous_value
-            portfolio_weight = self.portfolio_weight
             portfolio_value = self.portfolio_value
         else:
             time_index: int = state["time_index"]
             previous_value: torch.Tensor = state["previous_value"]
-            portfolio_weight: torch.Tensor = state["portfolio_weight"]
             portfolio_value: torch.Tensor = state["portfolio_value"]
 
-        action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
-            self,
-            portfolio_weight,
-            action_weight,
-            portfolio_value,
-        )
-
         new_state = self.update(action_weight, state=state, modify_inner_state=False)
-        reward = torch.log(new_state["previous_value"] / previous_value)
+        reward = torch.log(new_state["portfolio_value"] / portfolio_value)
         done = time_index == self.data.time_dimension() - 2
 
         return new_state, reward, done

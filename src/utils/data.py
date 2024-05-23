@@ -53,7 +53,37 @@ class Data:
         self.data = data
         self.asset_codes = list(data.keys())
         self.time_list = self._get_time_list()
+        self.check_time_list()
         logger.info(f"Total {len(self.time_list)} time points found.")
+
+    def check_time_list(self) -> None:
+        """check the time list"""
+        # if a time stamp is not found in one asset, delete it from all assets
+        for asset_code in self.asset_codes:
+            for time in self.time_list:
+                if time not in self.data[asset_code].hist.index:
+                    self.delete_from_time(time)
+
+    def delete_from_time(self, time: pd.Timestamp) -> None:
+        """delete data from the given time
+
+        Args:
+            time (pd.Timestamp): the time to delete data from
+        """
+        logger.info(f"Deleting data from time {time}.")
+        for asset_code in self.asset_codes:
+            self.data[asset_code].hist = self.data[asset_code].hist.drop(
+                time, errors="ignore"
+            )
+            for option_date in self.get_asset_option_dates(asset_code):
+                self.data[asset_code].calls[option_date] = (
+                    self.data[asset_code].calls[option_date].drop(time, errors="ignore")
+                )
+                self.data[asset_code].puts[option_date] = (
+                    self.data[asset_code].puts[option_date].drop(time, errors="ignore")
+                )
+        self.time_list = self._get_time_list()
+        logger.info(f"Data deleted from time {time}.")
 
     def uniform_time(self, time_zone: str = "America/New_York") -> None:
         """uniform all data time to the given time zone

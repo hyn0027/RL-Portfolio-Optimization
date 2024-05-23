@@ -1,4 +1,5 @@
 import argparse
+from copy import deepcopy
 from typing import Dict, Tuple, List, Optional, Union
 from utils.logging import get_logger
 
@@ -105,7 +106,7 @@ class BaseEnv:
         self.rf_return = torch.tensor(
             args.risk_free_return, dtype=self.dtype, device=self.device
         )
-
+        self.rf_return = torch.pow(1 + self.rf_return, 1 / args.annual_sample) - 1
         self.transaction_cost_rate_buy = torch.tensor(
             args.transaction_cost_rate_buy, dtype=self.dtype, device=self.device
         )
@@ -450,8 +451,8 @@ class BaseEnv:
         )
         prev_mu = torch.tensor(float("inf"), dtype=self.dtype, device=self.device)
 
-        threshold = self.iteration_epsilon
-        max_iter = self.iteration_max_iter
+        threshold = deepcopy(self.iteration_epsilon)
+        max_iter = deepcopy(self.iteration_max_iter)
 
         while torch.abs(mu - prev_mu) > threshold and max_iter > 0:
             prev_mu = mu
@@ -529,6 +530,7 @@ class BaseEnv:
         new_rf_weight_next_day = torch.tensor(
             1.0, dtype=self.dtype, device=self.device
         ) - torch.sum(new_portfolio_weight_next_day)
+        new_rf_weight_next_day = torch.clip(new_rf_weight_next_day, 0.0, 1.0)
 
         static_portfolio_value = portfolio_value * (
             torch.sum(price_change_rate * portfolio_weight)

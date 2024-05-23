@@ -1,7 +1,7 @@
 {
-    "MultiDQN": "../evaluator/MultiDQN+DiscreteRealDataEnv1+AMZN+EPAM+WBD/model_last_checkpoint/model.json",
-    "BuyAndHold": "../evaluator/MultiDQN+DiscreteRealDataEnv1+AMZN+EPAM+WBD/model_last_checkpoint/B&H.json",
-    "Momentum": "../evaluator/MultiDQN+DiscreteRealDataEnv1+AMZN+EPAM+WBD/model_last_checkpoint/momentum.json",
-    "Reversal": "../evaluator/MultiDQN+DiscreteRealDataEnv1+AMZN+EPAM+WBD/model_last_checkpoint/reverse_momentum.json",
-    "Random": "../evaluator/MultiDQN+DiscreteRealDataEnv1+AMZN+EPAM+WBD/model_last_checkpoint/random.json"
+    "MultiDQN": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model140/model.json",
+    "BuyAndHold": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model_last_checkpoint/B&H.json",
+    "Momentum": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model_last_checkpoint/momentum.json",
+    "Reversal": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model_last_checkpoint/reverse_momentum.json",
+    "Random": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model_last_checkpoint/random.json"
 }

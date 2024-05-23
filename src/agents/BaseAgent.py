@@ -105,12 +105,12 @@ class BaseAgent(Generic[BaseEnv]):
         self.args = args
         self.test_mode = test_mode
         self.test_model_only = args.test_model_only
+        self.train_learning_rate: float = args.train_learning_rate
 
         if not self.test_mode:
             self.model_save_path = args.model_save_path
             create_path_recursively(self.model_save_path)
             self.train_epochs: int = args.train_epochs
-            self.train_learning_rate: float = args.train_learning_rate
 
             self.loss_scale = 1
             self.loss_min = torch.tensor(

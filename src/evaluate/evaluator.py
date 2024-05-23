@@ -77,7 +77,9 @@ class Evaluator:
         self.disable_AT: bool = args.disable_AT
         self.disable_MDD: bool = args.disable_MDD
         self.annual_sample: int = args.annual_sample
-        self.risk_free_return: float = args.risk_free_return
+        risk_free_return = torch.tensor(args.risk_free_return)
+        risk_free_return = torch.pow(1 + risk_free_return, 1 / args.annual_sample) - 1
+        self.risk_free_return = float(risk_free_return)
         self.portfolio_value_list = []
         self.portfolio_weight_list = []
         self.return_rate = []
