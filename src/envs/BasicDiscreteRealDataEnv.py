@@ -19,12 +19,6 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
         super(BasicDiscreteRealDataEnv, BasicDiscreteRealDataEnv).add_args(parser)
-        parser.add_argument(
-            "--trading_size",
-            type=float,
-            default=1e4,
-            help="the size of each trading in terms of currency",
-        )
 
     def __init__(
         self,
@@ -42,10 +36,6 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         logger.info("Initializing BasicDiscreteRealDataEnv")
         super().__init__(args, data, device)
 
-        self.trading_size = torch.tensor(
-            args.trading_size, dtype=self.dtype, device=self.device
-        )
-
         self.all_actions = []
         action_number = range(-1, 2)  # -1, 0, 1
         for action in product(action_number, repeat=self.asset_num):
@@ -62,7 +52,6 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
             device (torch.device): the device to move to
         """
         super().to(device)
-        self.trading_size = self.trading_size.to(self.device)
         self.all_actions = [a.to(self.device) for a in self.all_actions]
 
     def find_action_index(self, action: torch.Tensor) -> int:
@@ -115,7 +104,7 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
 
     def update(
         self,
-        action: torch.Tensor,
+        action: torch.Tensor = None,
         state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
         modify_inner_state: Optional[bool] = None,
     ) -> Dict[str, Union[torch.Tensor, int]]:
@@ -123,7 +112,7 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         update the environment
 
         Args:
-            action (torch.Tensor): the action to perform
+            action (torch.Tensor): the action to perform. Defaults to None.
             state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
             modify_inner_state (Optional[bool], optional): whether to modify the inner state. Defaults to None.
 
@@ -132,6 +121,8 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         """
         if modify_inner_state is None:
             modify_inner_state = state is None
+        if action is None:
+            action = torch.zeros(self.asset_num, dtype=self.dtype, device=self.device)
         if self.find_action_index(action) == -1:
             raise ValueError(f"Invalid action: {action}")
         action = action * self.trading_size
@@ -149,7 +140,8 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
         Returns:
             torch.Tensor: the random action
         """
-        return self.all_actions[random.randint(0, len(self.all_actions) - 1)]
+        possible_actions = self.possible_actions()
+        return random.choice(possible_actions)
 
     def possible_actions(
         self, state: Dict[str, torch.Tensor] = None
@@ -163,3 +155,35 @@ class BasicDiscreteRealDataEnv(BasicRealDataEnv):
             List[torch.Tensor]: the possible actions
         """
         return self.all_actions
+
+    def get_momentum_action(self) -> torch.Tensor:
+        """get the momentum action
+
+        Returns:
+            torch.Tensor: the momentum action
+        """
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        action = torch.zeros(self.asset_num, dtype=torch.int32, device=self.device)
+        for asset_index in range(self.asset_num):
+            if current_price[asset_index] > prev_price[asset_index]:
+                action[asset_index] = 1
+            elif current_price[asset_index] < prev_price[asset_index]:
+                action[asset_index] = -1
+        return action
+
+    def get_reverse_momentum_action(self) -> torch.Tensor:
+        """get the reverse momentum action
+
+        Returns:
+            torch.Tensor: the reverse momentum action
+        """
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        action = torch.zeros(self.asset_num, dtype=torch.int32, device=self.device)
+        for asset_index in range(self.asset_num):
+            if current_price[asset_index] > prev_price[asset_index]:
+                action[asset_index] = -1
+            elif current_price[asset_index] < prev_price[asset_index]:
+                action[asset_index] = 1
+        return action

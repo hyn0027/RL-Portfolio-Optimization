@@ -77,21 +77,26 @@ class Evaluator:
         self.disable_AT: bool = args.disable_AT
         self.disable_MDD: bool = args.disable_MDD
         self.annual_sample: int = args.annual_sample
-        self.risk_free_return: float = args.risk_free_return
+        risk_free_return = torch.tensor(args.risk_free_return)
+        risk_free_return = torch.pow(1 + risk_free_return, 1 / args.annual_sample) - 1
+        self.risk_free_return = float(risk_free_return)
         self.portfolio_value_list = []
         self.portfolio_weight_list = []
         self.return_rate = []
         self.previous_portfolio_value = args.initial_balance
         self.asset_prices = []
+        self.initial_balance = args.initial_balance
         logger.info("Evaluator initialized")
 
-    def reset(self, initial_balance: float) -> None:
+    def reset(self, initial_balance: float = None) -> None:
         """reset the evaluator
 
         Args:
-            initial_balance (float): the initial balance
+            initial_balance (float): the initial balance, if None, use the initial balance from the arguments. Defaults to None.
         """
         logger.info("Resetting Evaluator")
+        if initial_balance is None:
+            initial_balance = self.initial_balance
         self.portfolio_value_list = []
         self.portfolio_weight_list = []
         self.return_rate = []
@@ -136,7 +141,13 @@ class Evaluator:
             ],
             "return_rate": self.return_rate,
             "asset_prices": [price.tolist() for price in self.asset_prices],
+            "CR": self.calculate_CR(),
+            "SR": self.calculate_SR(),
+            "SteR": self.calculate_SteR(),
+            "AT": self.calculate_AT(),
+            "MDD": self.calculate_MDD(),
         }
+        logger.info(f"Outputting record to {path}")
         with open(path, "w") as f:
             json.dump(record, f, indent=4)
 

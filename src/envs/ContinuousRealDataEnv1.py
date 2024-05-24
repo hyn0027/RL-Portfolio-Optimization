@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple, List, Union
 from utils.logging import get_logger
 
 import torch
+import copy
 
 
 from envs import register_env
@@ -141,38 +142,29 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         if state is None:
             time_index = self.time_index
             previous_value = self.previous_value
-            portfolio_weight = self.portfolio_weight
             portfolio_value = self.portfolio_value
         else:
             time_index: int = state["time_index"]
             previous_value: torch.Tensor = state["previous_value"]
-            portfolio_weight: torch.Tensor = state["portfolio_weight"]
             portfolio_value: torch.Tensor = state["portfolio_value"]
 
-        action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
-            self,
-            portfolio_weight,
-            action_weight,
-            portfolio_value,
-        )
-
         new_state = self.update(action_weight, state=state, modify_inner_state=False)
-        reward = torch.log(new_state["previous_value"] / previous_value)
+        reward = torch.log(new_state["portfolio_value"] / portfolio_value)
         done = time_index == self.data.time_dimension() - 2
 
         return new_state, reward, done
 
     def update(
         self,
-        action_weight: torch.Tensor,
-        state: Optional[Dict[str, Union[torch.Tensor, int]]],
+        action_weight: torch.Tensor = None,
+        state: Optional[Dict[str, Union[torch.Tensor, int]]] = None,
         modify_inner_state: Optional[bool] = None,
     ) -> Dict[str, Union[torch.Tensor, int]]:
         """
         update the environment
 
         Args:
-            action_weight (torch.Tensor): the action to perform, means the weight after trade
+            action_weight (torch.Tensor): the action to perform, means the weight after trade. Defaults to None.
             state (Optional[Dict[str, Union[torch.Tensor, int]]], optional): the state tensors. Defaults to None.
             modify_inner_state (Optional[bool], optional): whether to modify the inner state. Defaults to None.
 
@@ -188,15 +180,12 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         if modify_inner_state is None:
             modify_inner_state = state is None
 
-        action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
-            self, portfolio_weight, action_weight, portfolio_value
-        )
-        # print("111")
-        # print(portfolio_weight)
-        # print(action_weight)
-        # print(portfolio_value)
-        # print(action)
-        # print("222")
+        if action_weight is None:
+            action = torch.zeros(self.asset_num, dtype=self.dtype, device=self.device)
+        else:
+            action, mu = BaseEnv._get_trading_size_according_to_weight_after_trade(
+                self, portfolio_weight, action_weight, portfolio_value
+            )
         new_state = BaseEnv.update(self, action, state, modify_inner_state)
         if modify_inner_state:
             self.previous_weight = new_state["new_portfolio_weight_prev_day"]
@@ -211,3 +200,56 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         ]
         ret_state["prev_price"] = new_state["prev_price"]
         return ret_state
+
+    def select_random_action(self) -> torch.Tensor:
+        """select a random action
+
+        Returns:
+            torch.Tensor: the random action
+        """
+        rand_weight = torch.rand(self.asset_num, dtype=self.dtype, device=self.device)
+        return torch.nn.functional.softmax(rand_weight)
+
+    def get_momentum_action(self) -> torch.Tensor:
+        """get the momentum action
+
+        Returns:
+            torch.Tensor: the momentum action
+        """
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        original_add_num = 0.3 / self.asset_num
+        add_num = 0.3 / self.asset_num
+        while True:
+            action = copy.deepcopy(self.portfolio_weight)
+            for asset_index in range(self.asset_num):
+                if current_price[asset_index] > prev_price[asset_index]:
+                    action[asset_index] += add_num
+                elif current_price[asset_index] < prev_price[asset_index]:
+                    action[asset_index] -= original_add_num
+            action = torch.clamp(action, 0, 1)
+            if torch.sum(action) <= 1.0:
+                return action
+            add_num /= 2
+
+    def get_reverse_momentum_action(self) -> torch.Tensor:
+        """get the reverse momentum action
+
+        Returns:
+            torch.Tensor: the reverse momentum action
+        """
+        current_price = self._get_price_tensor(self.time_index)
+        prev_price = self._get_price_tensor(self.time_index - 1)
+        add_num = 0.3 / self.asset_num
+
+        while True:
+            action = copy.deepcopy(self.portfolio_weight)
+            for asset_index in range(self.asset_num):
+                if current_price[asset_index] > prev_price[asset_index]:
+                    action[asset_index] -= add_num
+                elif current_price[asset_index] < prev_price[asset_index]:
+                    action[asset_index] += add_num
+            action = torch.clamp(action, 0, 1)
+            if torch.sum(action) <= 1:
+                return action
+            add_num /= 2
