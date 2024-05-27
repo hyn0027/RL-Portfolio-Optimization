@@ -103,7 +103,7 @@ python3 run.py \
     --asset_codes ^GSPC ^DJI ^RUT \
     --start_date 2014-01-01 \
     --end_date 2023-01-01 \
-    --train_learning_rate 1e-3 \
+    --train_learning_rate 1e-4 \
     --DPG_update_window_size 50 \
     --iteration_epsilon 1e-3 \
     --iteration_max_iter 50 \

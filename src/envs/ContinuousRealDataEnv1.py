@@ -210,6 +210,16 @@ class ContinuousRealDataEnv1(BasicContinuousRealDataEnv):
         rand_weight = torch.rand(self.asset_num, dtype=self.dtype, device=self.device)
         return torch.nn.functional.softmax(rand_weight)
 
+    def get_CRP_action(self) -> torch.Tensor:
+        """get the constant rebalanced portfolio action
+
+        Returns:
+            torch.Tensor: the constant rebalanced portfolio action
+        """
+        return torch.ones(self.asset_num, dtype=self.dtype, device=self.device) / (
+            self.asset_num + 1
+        )
+
     def get_momentum_action(self) -> torch.Tensor:
         """get the momentum action
 

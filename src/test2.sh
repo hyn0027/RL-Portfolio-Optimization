@@ -1,29 +1,21 @@
 #!/bin/bash
 
-# VARIANT=LSTM
-# START=144
-# END=157
 
-VARIANT=CNN
-START=166
-END=207
-
-# VARIANT=RNN
-# START=94
-# END=102
+START=14
+END=20
 
 BASE_CMD="python3 run.py \
-    --agent DPG \
+    --agent MultiDPG \
+    --env BasicContinuousRealDataEnv \
+    --network PolicyTransformer \
     --initial_balance 1000000 \
-    --env ContinuousRealDataEnv1 \
-    --network PolicyWeight${VARIANT} \
     --asset_codes ^GSPC ^DJI ^RUT \
     --start_date 2022-11-17 \
     --end_date 2024-01-01 \
     --interval 1d \
     --DPG_update_window_size 30 \
     --annual_sample 252 \
-    --train_learning_rate 5e-4 \
+    --train_learning_rate 1e-5 \
     --train_batch_size 1 \
     --device cuda \
     --risk_free_return 0.04 \
@@ -35,9 +27,9 @@ BASE_CMD="python3 run.py \
 # MODEL_PATH_BASE="../model/MultiDeQN+^GSPC+^DJI+^RUT"
 # EVALUATOR_PATH_BASE="../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT"
 
-LOG_PATH_BASE="../logs/test_DPG+${VARIANT}+^GSPC+^DJI+^RUT"
-MODEL_PATH_BASE="../model/DPG+${VARIANT}+^GSPC+^DJI+^RUT"
-EVALUATOR_PATH_BASE="../evaluator/DPG+${VARIANT}+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT"
+LOG_PATH_BASE="../logs/test_DPG+Transformer+^GSPC+^DJI+^RUT1"
+MODEL_PATH_BASE="../model/DPG+Transformer+^GSPC+^DJI+^RUT1"
+EVALUATOR_PATH_BASE="../evaluator/DPG+Transformer+^GSPC+^DJI+^RUT1"
 
 mkdir -p $LOG_PATH_BASE
 

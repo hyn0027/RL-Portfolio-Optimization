@@ -48,6 +48,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         help="the name of the model",
     )
+    parser.add_argument(
+        "--window_size",
+        default=20,
+        type=int,
+        help="the window size for moving average",
+    )
     return parser.parse_args()
 
 
@@ -80,17 +86,26 @@ def visualize_list(visualization_list: Dict[str, str], save_path: str) -> None:
             data = json.load(f)
             value_list = data["portfolio_value_list"]
             value_dict[visualization_name] = value_list
+            CR = data["CR"]
+            SR = data["SR"]
+            SteR = data["SteR"]
+            AT = data["AT"]
+            MDD = data["MDD"]
+            logger.info(
+                f"CR: {CR * 100 :.3f}, SR: {SR:.3f}, AT: {AT:.4f}, MDD: {MDD * 100:.3f}"
+            )
 
     logger.info("visualizing the data")
     # draw value_dict
     plt.clf()
+    fig = plt.figure(figsize=(8, 6), dpi=500)
     for visualization_name, value_list in value_dict.items():
-        plt.plot(value_list, label=visualization_name)
+        plt.plot(value_list, label=visualization_name, linewidth=0.7)
     plt.legend()
     plt.savefig(save_path)
 
 
-def visualize_across_epoch(base_path: str, save_path: str) -> None:
+def visualize_across_epoch(base_path: str, save_path: str, window_size: int) -> None:
     """visualize the data across epochs
 
     Args:
@@ -117,57 +132,75 @@ def visualize_across_epoch(base_path: str, save_path: str) -> None:
             MDD_list.append(data["MDD"])
         epoch_num += 1
 
-    window_size = 1
-
     def moving_average(data):
         return np.convolve(data, np.ones(window_size) / window_size, mode="valid")
 
     plt.clf()
-    plt.plot(CR_list, label="CR")
+    fig = plt.figure(figsize=(6, 4.5), dpi=500)
+    plt.plot(CR_list, label="CR", linewidth=1)
     moving_avg = moving_average(CR_list)
     x = np.arange(len(CR_list))
     plt.plot(
-        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+        x[window_size - 1 :],
+        moving_avg,
+        label=f"Moving Average (window={window_size})",
+        linewidth=1,
     )
     plt.legend()
     plt.savefig(os.path.join(save_path, "CR.png"))
 
     plt.clf()
-    plt.plot(SR_list, label="SR")
+    fig = plt.figure(figsize=(6, 4.5), dpi=500)
+    plt.plot(SR_list, label="SR", linewidth=1)
     moving_avg = moving_average(SR_list)
     x = np.arange(len(SR_list))
     plt.plot(
-        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+        x[window_size - 1 :],
+        moving_avg,
+        label=f"Moving Average (window={window_size})",
+        linewidth=1,
     )
     plt.legend()
     plt.savefig(os.path.join(save_path, "SR.png"))
 
     plt.clf()
-    plt.plot(SteR_list, label="SteR")
+    fig = plt.figure(figsize=(6, 4.5), dpi=500)
+    plt.plot(SteR_list, label="SteR", linewidth=1)
     moving_avg = moving_average(SteR_list)
     x = np.arange(len(SteR_list))
     plt.plot(
-        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+        x[window_size - 1 :],
+        moving_avg,
+        label=f"Moving Average (window={window_size})",
+        linewidth=1,
     )
     plt.legend()
     plt.savefig(os.path.join(save_path, "SteR.png"))
 
     plt.clf()
-    plt.plot(AT_list, label="AT")
+    fig = plt.figure(figsize=(6, 4.5), dpi=500)
+    plt.plot(AT_list, label="AT", linewidth=1)
     moving_avg = moving_average(AT_list)
     x = np.arange(len(AT_list))
     plt.plot(
-        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+        x[window_size - 1 :],
+        moving_avg,
+        label=f"Moving Average (window={window_size})",
+        linewidth=1,
     )
     plt.legend()
     plt.savefig(os.path.join(save_path, "AT.png"))
 
     plt.clf()
-    plt.plot(MDD_list, label="MDD")
+    fig = plt.figure(figsize=(6, 4.5), dpi=500)
+    plt.plot(MDD_list, label="MDD", linewidth=1)
     moving_avg = moving_average(MDD_list)
     x = np.arange(len(MDD_list))
     plt.plot(
-        x[window_size - 1 :], moving_avg, label=f"Moving Average (window={window_size})"
+        x[window_size - 1 :],
+        moving_avg,
+        label=f"Moving Average (window={window_size})",
+        linewidth=1,
     )
     plt.legend()
     plt.savefig(os.path.join(save_path, "MDD.png"))
@@ -201,10 +234,16 @@ def main() -> None:
         }
         if not os.path.exists(args.output_path):
             os.makedirs(args.output_path)
-        visualize_list(visualization_list, os.path.join(args.output_path, "result.png"))
+        try:
+            visualize_list(
+                visualization_list, os.path.join(args.output_path, "result.png")
+            )
+        except:
+            logger.warning("Failed to visualize the data list")
         visualize_across_epoch(
             args.visualize_single_path,
             args.output_path,
+            args.window_size,
         )
     elif args.visualize_mode == "json":
         logger.info("get the visualization list")

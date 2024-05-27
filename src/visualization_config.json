@@ -1,7 +1,11 @@
 {
-    "MultiDQN": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model140/model.json",
-    "BuyAndHold": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model_last_checkpoint/B&H.json",
-    "Momentum": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model_last_checkpoint/momentum.json",
-    "Reversal": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model_last_checkpoint/reverse_momentum.json",
-    "Random": "../evaluator/MultiDQN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT2/model_last_checkpoint/random.json"
+    "Jiang+CNN": "../evaluator/DPG+CNN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX/model195/model.json",
+    "Jiang+RNN": "../evaluator/DPG+RNN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX/model51/model.json",
+    "Jiang+LSTM": "../evaluator/DPG+LSTM+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX/model82/model.json",
+    "RLPT": "../evaluator/DPG+Transformer+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX1/model_last_checkpoint/model.json",
+    "CRP": "../evaluator/DPG+CNN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX/model_last_checkpoint/CRP.json",
+    "BuyAndHold": "../evaluator/DPG+CNN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX/model_last_checkpoint/B&H.json",
+    "Momentum": "../evaluator/DPG+CNN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX/model_last_checkpoint/momentum.json",
+    "Reversal": "../evaluator/DPG+CNN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX/model_last_checkpoint/reverse_momentum.json",
+    "Random": "../evaluator/DPG+CNN+DiscreteRealDataEnv1+^GSPC+^DJI+^RUT+^IXIC+^NYA+^XAX/model_last_checkpoint/random.json"
 }

@@ -64,7 +64,7 @@ class PolicyCNN(nn.Module):
             x (Dict[str, torch.Tensor]): the input tensors
 
         Returns:
-            torch.Tensor: the out**put tensor
+            torch.Tensor: the output tensor
         """
         x = state["price"].transpose(1, 2)
 

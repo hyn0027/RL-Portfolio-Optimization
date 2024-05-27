@@ -82,10 +82,16 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             portfolio_weight: torch.Tensor = state["portfolio_weight"]
             rf_weight: torch.Tensor = state["rf_weight"]
             portfolio_value: torch.Tensor = state["portfolio_value"]
-        price = self._get_price_tensor_in_window(time_index).transpose(0, 1)
-        price = price.unsqueeze(0)
+        with torch.no_grad():
+            price = self._get_price_tensor_in_window(time_index).transpose(0, 1)
+            price_high = self._get_high_price_tensor_in_window(time_index).transpose(
+                0, 1
+            )
+            price_low = self._get_low_price_tensor_in_window(time_index).transpose(0, 1)
         return {
             "price": price,
+            "price_high": price_high,
+            "price_low": price_low,
             "time_index": time_index,
             "portfolio_weight": portfolio_weight,
             "rf_weight": rf_weight,
@@ -114,9 +120,7 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
             time_index: int = state["time_index"]
             portfolio_value = state["portfolio_value"]
         new_state = self.update(action, state=state, modify_inner_state=False)
-        reward = (new_state["portfolio_value"] - portfolio_value) / torch.abs(
-            portfolio_value
-        )
+        reward = torch.log(new_state["portfolio_value"] / portfolio_value)
         done = time_index == self.data.time_dimension() - 2
 
         return new_state, reward, done
@@ -140,27 +144,8 @@ class BasicContinuousRealDataEnv(BasicRealDataEnv):
         """
         if modify_inner_state is None:
             modify_inner_state = state is None
-        if state is None:
-            portfolio_value = self.portfolio_value
-            portfolio_weight = self.portfolio_weight
-            rf_weight = self.rf_weight
-        else:
-            portfolio_value: torch.Tensor = state["portfolio_value"]
-            portfolio_weight: torch.Tensor = state["portfolio_weight"]
-            rf_weight: torch.Tensor = state["rf_weight"]
         if action is None:
             action = torch.zeros(self.asset_num)
-        for i in range(self.asset_num):
-            if (
-                action[i] < 0
-                and portfolio_weight[i] * self.portfolio_value < -action[i]
-            ):
-                action[i] = -portfolio_weight[i] * self.portfolio_value
-        while self._cash_shortage(action, portfolio_value, rf_weight):
-            for i in range(self.asset_num):
-                if action[i] > 0:
-                    action[i] = 0
-                    break
         new_state = BaseEnv.update(self, action, state, modify_inner_state)
         new_state.pop("new_rf_weight_prev_day", None)
         new_state.pop("new_portfolio_value_prev_day", None)

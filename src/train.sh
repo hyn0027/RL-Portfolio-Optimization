@@ -1,30 +1,55 @@
 #!/bin/bash
 
 python3 run.py \
-    --agent MultiDQN \
-    --env DiscreteRealDataEnv1 \
-    --network MultiValueLSTM \
+    --agent DPG \
+    --env ContinuousRealDataEnv1 \
+    --network PolicyWeightCNN \
     --asset_codes ^GSPC ^DJI ^RUT \
     --start_date 2014-01-01 \
     --end_date 2023-01-01 \
+    --train_learning_rate 1e-4 \
+    --DPG_update_window_size 50 \
+    --iteration_epsilon 1e-3 \
+    --iteration_max_iter 50 \
     --interval 1d \
     --annual_sample 252 \
-    --device cpu \
-    --pretrain_epochs 85 \
-    --train_batch_size 32 \
-    --train_epochs 800 \
-    --pretrain_learning_rate 1e-3 \
-    --train_learning_rate 0.0000013 \
-    --episode_length 229 \
-    --DQN_epsilon_decay 0.9998 \
-    --replay_sample_unique \
-    --window_size 20 \
-    --risk_free_return 0.06 \
+    --device cuda \
+    --train_batch_size 1 \
+    --train_epochs 2000 \
+    --window_size 50 \
+    --risk_free_return 0.04 \
     --mode train \
-    --model_save_path ../model/MultiDQN+^GSPC+^DJI+^RUT2 \
+    --model_save_path ../model/DPG+CNN+^GSPC+^DJI+^RUT\
+    --initial_balance 1000000 \
     --replay_window 2000 \
     --trading_size 1000 \
-    --initial_balance 1000000 > ../logs/train_MultiDQN+^GSPC+^DJI+^RUT2.log 2>&1
+    --replay_sample_distribution geometric > ../logs/train_DPG+CNN+^GSPC+^DJI+^RUT.log 2>&1
+
+# python3 run.py \
+#     --agent MultiDQN \
+#     --env DiscreteRealDataEnv1 \
+#     --network MultiValueLSTM \
+#     --asset_codes ^GSPC ^DJI ^RUT \
+#     --start_date 2014-01-01 \
+#     --end_date 2023-01-01 \
+#     --interval 1d \
+#     --annual_sample 252 \
+#     --device cpu \
+#     --pretrain_epochs 85 \
+#     --train_batch_size 32 \
+#     --train_epochs 800 \
+#     --pretrain_learning_rate 1e-3 \
+#     --train_learning_rate 0.0000013 \
+#     --episode_length 229 \
+#     --DQN_epsilon_decay 0.9998 \
+#     --replay_sample_unique \
+#     --window_size 20 \
+#     --risk_free_return 0.06 \
+#     --mode train \
+#     --model_save_path ../model/MultiDQN+^GSPC+^DJI+^RUT2 \
+#     --replay_window 2000 \
+#     --trading_size 1000 \
+#     --initial_balance 1000000 > ../logs/train_MultiDQN+^GSPC+^DJI+^RUT2.log 2>&1
 
 
 # python3 run.py \
